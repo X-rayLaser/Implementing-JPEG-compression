@@ -37,12 +37,11 @@ def average_band(band, block_size=3):
     return np.mean(blocks_matrix, axis=(2, 3))
 
 
-def compress(input_fname, output_fname):
+def compress(input_fname, output_fname, block_size=2):
     im = Image.open(input_fname).convert('YCbCr')
 
     y, cb, cr = im.split()
 
-    block_size = 4
     mean_cb = average_band(cb, block_size=block_size)
     mean_cr = average_band(cr, block_size=block_size)
 
@@ -62,4 +61,21 @@ def compress(input_fname, output_fname):
         f.write(s)
 
 
-compress('1.jpg', 'out.json')
+if __name__ == '__main__':
+    import argparse
+
+    parser = argparse.ArgumentParser(
+        description='Given an image, compress it using JPEG algorithm'
+    )
+    parser.add_argument('infile', type=str,
+                        help='a path to the file to compress')
+
+    parser.add_argument('outfile', type=str,
+                        help='a destination path')
+
+    parser.add_argument('--block_size', action='store', type=int, default=2,
+                        help='size of sub-sampling block')
+
+    args = parser.parse_args()
+
+    compress(args.infile, args.outfile, block_size=args.block_size)

@@ -32,4 +32,18 @@ def decompress(input_path, output_path):
     reconstructed.save(output_path)
 
 
-decompress('out.json', 'reconsturcted.jpg')
+if __name__ == '__main__':
+    import argparse
+
+    parser = argparse.ArgumentParser(
+        description='Given an image, compress it using JPEG algorithm'
+    )
+    parser.add_argument('infile', type=str,
+                        help='a path to the file to compress')
+
+    parser.add_argument('outfile', type=str,
+                        help='a destination path')
+
+    args = parser.parse_args()
+
+    decompress(args.infile, args.outfile)
