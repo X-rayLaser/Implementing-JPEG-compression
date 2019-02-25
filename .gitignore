@@ -1,0 +1,6 @@
+\.idea/
+venv/
+*.png
+*.jpg
+*.json
+util.py
