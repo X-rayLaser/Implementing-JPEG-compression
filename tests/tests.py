@@ -3,7 +3,7 @@ import sys
 import numpy as np
 sys.path.insert(0, '../')
 from compress import split_into_blocks, BadArrayShapeError, EmptyArrayError
-from compress import pad_array, padded_size
+from compress import subsample, pad_array, padded_size
 
 
 class PaddingTests(unittest.TestCase):
@@ -75,6 +75,25 @@ class SplitIntoBlocksTests(unittest.TestCase):
         self.assertEqual(blocks[0, 1].ravel().tolist(), [2, 3, 6, 7])
         self.assertEqual(blocks[1, 0].ravel().tolist(), [8, 9, 12, 13])
         self.assertEqual(blocks[1, 1].ravel().tolist(), [10, 11, 14, 15])
+
+
+class SubsampleTests(unittest.TestCase):
+    def test_averaging(self):
+        a = np.array([[1, 2, 2, 1],
+                      [3, 2, 8, 1],
+                      [0, 0, 2, 2],
+                      [0, 4, 2, 2]])
+
+        res = subsample(a, block_size=2)
+        self.assertEqual(res.shape, (2, 2))
+        self.assertEqual(res[0][0], 2)
+        self.assertEqual(res[0][1], 3)
+        self.assertEqual(res[1][0], 1)
+        self.assertEqual(res[1][1], 2)
+
+        res = subsample(a, block_size=4)
+        self.assertEqual(res.shape, (1, 1))
+        self.assertEqual(res[0][0], 2)
 
 
 if __name__ == '__main__':
