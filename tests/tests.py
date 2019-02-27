@@ -118,6 +118,13 @@ class DctTests(unittest.TestCase):
 
         self.assertTrue(np.allclose(a, res, rtol=0.01))
 
+    def test_large_dct2d(self):
+        a = np.arange(64).reshape((8, 8))
+
+        res = dct2d_inverse(dct2d(a))
+
+        self.assertTrue(np.allclose(a, res, rtol=0.01))
+
 
 if __name__ == '__main__':
     unittest.main()

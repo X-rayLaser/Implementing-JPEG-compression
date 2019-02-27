@@ -1,16 +1,4 @@
 import numpy as np
-import math
-
-
-def dct_quotient(x, k1, k2):
-    N = x.shape[0]
-
-    s = 0
-    for n1 in range(N):
-        for n2 in range(N):
-            s += x[n1, n2] * math.cos(np.pi / N * (n1 + 0.5) * k1) * math.cos(np.pi / N * (n2 + 0.5) * k2 )
-
-    return s
 
 
 def dct_matrix(size):
@@ -53,21 +41,35 @@ def dct1d_inverse(x):
     return W.dot(Dinv.dot(x))
 
 
+def transform_matrix(matrix, transformation=dct1d):
+    res = np.zeros(matrix.shape)
+    for i in range(matrix.shape[0]):
+        res[i] = transformation(matrix[i])
+    return res
+
+
 def dct2d(a):
     assert a.ndim == 2
     assert a.shape[0] == a.shape[1]
-    res = np.zeros(a.shape)
 
-    N = a.shape[0]
-    for k1 in range(N):
-        for k2 in range(N):
-            res[k1, k2] = dct_quotient(a, k1, k2)
+    # 2d DCT consists of 2 sets of 1-dimensional DCTs
 
-    return res
+    # 1-dimensional DCT for each row of matrix a
+    # each resulting row is vector of DCT coefficients of row of a
+    M = transform_matrix(a, dct1d)
+
+    # 1-dimensional DCT of each column of matrix Tx
+    # each resulting column is vector of DCT coefficients of column of M
+    return transform_matrix(M.T, dct1d).T
 
 
 def dct2d_inverse(a):
     assert a.ndim == 2
     assert a.shape[0] == a.shape[1]
-    res = np.zeros(a.shape)
-    return res
+
+    # similar to dct2d
+    # performing 1d DCT inverse for each column of matrix a
+    M = transform_matrix(a.T, dct1d_inverse).T
+
+    # performing 1d DCT inverse for each row of matrix M
+    return transform_matrix(M, dct1d_inverse)
