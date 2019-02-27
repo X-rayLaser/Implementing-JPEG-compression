@@ -5,6 +5,10 @@ from PIL import Image
 import numpy as np
 
 
+def change_basis(a, dct_size):
+    pass
+
+
 def pad_array(a, block_size):
     """
     Adds padding to the array so as to make it size a multiple of a block size

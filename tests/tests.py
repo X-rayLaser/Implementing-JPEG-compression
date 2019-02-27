@@ -4,6 +4,7 @@ import numpy as np
 sys.path.insert(0, '../')
 from compress import split_into_blocks, BadArrayShapeError, EmptyArrayError
 from compress import subsample, pad_array, padded_size
+from transforms import dct1d, dct1d_inverse, dct2d, dct2d_inverse
 
 
 class PaddingTests(unittest.TestCase):
@@ -94,6 +95,28 @@ class SubsampleTests(unittest.TestCase):
         res = subsample(a, block_size=4)
         self.assertEqual(res.shape, (1, 1))
         self.assertEqual(res[0][0], 2)
+
+
+class DctTests(unittest.TestCase):
+    def test_dct1d(self):
+
+        a = 255 * np.cos(np.array(range(100)) * 1)
+
+        for i in range(a.shape[0]):
+            a[i] = round(a[i])
+
+        res = dct1d_inverse(dct1d(a))
+
+        self.assertTrue(np.allclose(a, res, rtol=0.01))
+
+    def test_dct2d(self):
+
+        a = np.array([[1, 2],
+                      [3, 4]])
+
+        res = dct2d_inverse(dct2d(a))
+
+        self.assertTrue(np.allclose(a, res, rtol=0.01))
 
 
 if __name__ == '__main__':
