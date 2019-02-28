@@ -2,17 +2,7 @@ import json
 import argparse
 import numpy as np
 from PIL import Image
-
-
-def inflate(a, factor):
-    """
-    Reverses a sub-sampling procedure for a given array
-
-    :param a: instance of numpy.ndarray
-    :param factor: size of sub-sampling block
-    :return: new instance of numpy.ndarray
-    """
-    return np.repeat(np.repeat(a, factor, axis=0), factor, axis=1)
+from pipeline import decompress_band, CompressionResult
 
 
 def decompress(input_path, output_path):
@@ -20,19 +10,17 @@ def decompress(input_path, output_path):
         s = f.read()
 
     d = json.loads(s)
-
-    block_size = d['block_size']
-
-    y = np.array(d['y'])
-
-    cb = inflate(
-        np.array(d['mean_cb']), block_size
-    )
-    cr = inflate(
-        np.array(d['mean_cr']), block_size
-    )
-
     size = (d['height'], d['width'])
+
+    y = decompress_band(
+        CompressionResult.from_dict(d['Y'])
+    )
+    cb = decompress_band(
+        CompressionResult.from_dict(d['Cb'])
+    )
+    cr = decompress_band(
+        CompressionResult.from_dict(d['Cr'])
+    )
 
     ycbcr = np.dstack(
         (y.reshape(size),cb.reshape(size), cr.reshape(size))

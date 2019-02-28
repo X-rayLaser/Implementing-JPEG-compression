@@ -2,9 +2,10 @@ import unittest
 import sys
 import numpy as np
 sys.path.insert(0, '../')
-from compress import split_into_blocks, BadArrayShapeError, EmptyArrayError
-from compress import subsample, pad_array, padded_size
+from util import split_into_blocks, BadArrayShapeError, EmptyArrayError
+from util import pad_array, padded_size
 from transforms import dct1d, dct1d_inverse, dct2d, dct2d_inverse
+from pipeline import subsample, compress_band, decompress_band
 
 
 class PaddingTests(unittest.TestCase):
@@ -124,6 +125,20 @@ class DctTests(unittest.TestCase):
         res = dct2d_inverse(dct2d(a))
 
         self.assertTrue(np.allclose(a, res, rtol=0.01))
+
+
+class PipelineTests(unittest.TestCase):
+    def test_compress_and_decompress_on_array(self):
+        original = np.arange(128).reshape(8, 16)
+
+        restored = decompress_band(compress_band(original, block_size=3))
+        self.assertTrue(np.allclose(original, restored, rtol=1))
+
+    def test_without_subsampling(self):
+        original = np.arange(6).reshape(2, 3)
+
+        restored = decompress_band(compress_band(original, block_size=1))
+        self.assertTrue(np.allclose(original, restored, rtol=0.000001))
 
 
 if __name__ == '__main__':
