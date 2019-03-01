@@ -5,14 +5,14 @@ from util import band_to_array
 from pipeline import compress_band
 
 
-def compress(input_fname, output_fname, block_size=2):
+def compress(input_fname, output_fname, block_size=2, dct_size=8):
     im = Image.open(input_fname).convert('YCbCr')
 
     y, cb, cr = im.split()
 
-    res_y = compress_band(band_to_array(y), block_size=1)
-    res_cb = compress_band(band_to_array(cb), block_size=block_size)
-    res_cr = compress_band(band_to_array(cr), block_size=block_size)
+    res_y = compress_band(band_to_array(y), block_size=1, dct_size=dct_size)
+    res_cb = compress_band(band_to_array(cb), block_size, dct_size)
+    res_cr = compress_band(band_to_array(cr), block_size, dct_size)
 
     d = {
         'width': im.width,
@@ -39,6 +39,9 @@ if __name__ == '__main__':
 
     parser.add_argument('--block_size', action='store', type=int, default=2,
                         help='size of sub-sampling block')
+
+    parser.add_argument('--dct_size', action='store', type=int, default=8,
+                        help='size of block for DCT transform')
 
     args = parser.parse_args()
 

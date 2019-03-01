@@ -1,6 +1,6 @@
 import numpy as np
 from util import split_into_blocks, pad_array, calculate_padding, inflate
-from transforms import dct2d, dct2d_inverse
+from transforms import DCT
 
 
 def undo_pad_array(a, padding):
@@ -38,11 +38,14 @@ def apply_blockwise(a, transformation, block_size):
 
 
 def change_basis(a, dct_size):
-    return apply_blockwise(a, dct2d, dct_size)
+    dct = DCT(dct_size)
+    return apply_blockwise(a, dct.transform_2d, dct_size)
 
 
 def undo_change_basis(a, dct_size):
-    return apply_blockwise(a, dct2d_inverse, dct_size)
+    dct = DCT(dct_size)
+
+    return apply_blockwise(a, dct.transform_2d_inverse, dct_size)
 
 
 def compress_band(a, block_size=2, dct_size=8):

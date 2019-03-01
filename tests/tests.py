@@ -4,7 +4,7 @@ import numpy as np
 sys.path.insert(0, '../')
 from util import split_into_blocks, BadArrayShapeError, EmptyArrayError
 from util import pad_array, padded_size
-from transforms import dct1d, dct1d_inverse, dct2d, dct2d_inverse
+from transforms import DCT
 from pipeline import subsample, compress_band, decompress_band
 
 
@@ -105,7 +105,8 @@ class DctTests(unittest.TestCase):
         for i in range(a.shape[0]):
             a[i] = round(a[i])
 
-        res = dct1d_inverse(dct1d(a))
+        dct = DCT(a.shape[0])
+        res = dct.transform_1d_inverse(dct.transform_1d(a))
 
         self.assertTrue(np.allclose(a, res, rtol=0.01))
 
@@ -114,14 +115,17 @@ class DctTests(unittest.TestCase):
         a = np.array([[1, 2],
                       [3, 4]])
 
-        res = dct2d_inverse(dct2d(a))
+        dct = DCT(a.shape[0])
+
+        res = dct.transform_2d_inverse(dct.transform_2d(a))
 
         self.assertTrue(np.allclose(a, res, rtol=0.01))
 
     def test_large_dct2d(self):
         a = np.arange(64).reshape((8, 8))
 
-        res = dct2d_inverse(dct2d(a))
+        dct = DCT(a.shape[0])
+        res = dct.transform_2d_inverse(dct.transform_2d(a))
 
         self.assertTrue(np.allclose(a, res, rtol=0.01))
 
