@@ -94,6 +94,12 @@ def padded_size(size, factor):
     return math.ceil(float(size) / factor) * factor
 
 
+def calculate_padding(a, factor):
+    padded_width = padded_size(a.shape[1], factor)
+    padded_height = padded_size(a.shape[0], factor)
+    return padded_height - a.shape[0], padded_width - a.shape[1]
+
+
 def band_to_array(band):
     pixels = np.array(list(band.getdata()))
     return pixels.reshape((band.height, band.width))
