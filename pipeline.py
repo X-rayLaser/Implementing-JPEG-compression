@@ -29,13 +29,13 @@ def apply_blockwise(a, transformation, block_size, res):
         for x in range(w):
             i = y * block_size
             j = x * block_size
-            block = np.round(transformation(blocks[y, x]))
+            block = transformation(blocks[y, x])
             res[i:i + block_size, j: j + block_size] = block
 
 
 def change_basis(a, dct_size, transform='DCT'):
     if transform == 'DCT':
-        res = np.zeros(a.shape, dtype=np.int)
+        res = np.zeros(a.shape, dtype=np.float)
         dct = DCT(dct_size)
         apply_blockwise(a, dct.transform_2d, dct_size, res)
     elif transform == 'DFT':
@@ -49,7 +49,7 @@ def change_basis(a, dct_size, transform='DCT'):
 
 
 def undo_change_basis(a, dct_size, transform='DCT'):
-    res = np.zeros(a.shape, dtype=np.int)
+    res = np.zeros(a.shape, dtype=np.float)
 
     if transform == 'DCT':
         dct = DCT(dct_size)
@@ -62,6 +62,32 @@ def undo_change_basis(a, dct_size, transform='DCT'):
     return res
 
 
+def quantize(a, dct_size):
+    res = np.zeros(a.shape, dtype=np.float)
+
+    def f(dct_block):
+        from quantizers import DiscardingQuantizer
+        quantizer = DiscardingQuantizer(4, 4)
+        return quantizer.quantize(dct_block)
+
+    apply_blockwise(a, f, dct_size, res)
+
+    return res
+
+
+def invert_quantize(a, dct_size):
+    res = np.zeros(a.shape, dtype=np.float)
+
+    def f(dct_block):
+        from quantizers import DiscardingQuantizer
+        quantizer = DiscardingQuantizer(4, 4)
+        return quantizer.restore(dct_block)
+
+    apply_blockwise(a, f, dct_size, res)
+
+    return res
+
+
 def compress_band(a, block_size=2, dct_size=8, transform='DCT'):
     padding = calculate_padding(a, block_size)
     a = pad_array(a, block_size)
@@ -70,6 +96,7 @@ def compress_band(a, block_size=2, dct_size=8, transform='DCT'):
     dct_padding = calculate_padding(a, dct_size)
     a = pad_array(a, dct_size)
     a = change_basis(a, dct_size, transform)
+    a = quantize(a, dct_size)
 
     return CompressionResult(a, block_size, dct_size, padding, dct_padding,
                              transform)
@@ -78,8 +105,11 @@ def compress_band(a, block_size=2, dct_size=8, transform='DCT'):
 def decompress_band(compression_result):
     a = compression_result.data
 
+    a = invert_quantize(a, compression_result.dct_block_size)
     a = undo_change_basis(a, compression_result.dct_block_size,
                           compression_result.transform_type)
+
+    a = np.array(np.round(a), dtype=np.int)
     a = undo_pad_array(a, compression_result.dct_padding)
     a = undo_subsample(a, compression_result.block_size)
     a = undo_pad_array(a, compression_result.subsampling_padding)

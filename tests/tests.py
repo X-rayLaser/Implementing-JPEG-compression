@@ -155,6 +155,12 @@ class PipelineTests(unittest.TestCase):
         restored = decompress_band(compress_band(original, block_size=1))
         self.assertTrue(np.allclose(original, restored, rtol=0.000001))
 
+    def test_with_1pixel_blocks(self):
+        original = np.arange(64).reshape(8, 8)
+
+        restored = decompress_band(compress_band(original, block_size=1, dct_size=1))
+        self.assertTrue(np.allclose(original, restored, rtol=0.000001))
+
     def test_serializability_for_integer_valued_arrays(self):
         data = np.arange(18).reshape(6, 3)
         original = CompressionResult(data=data, block_size=3,
@@ -181,6 +187,47 @@ class PipelineTests(unittest.TestCase):
         reconstructed = CompressionResult.from_dict(d)
 
         self.assertTrue(np.allclose(original.data, reconstructed.data))
+
+
+class QuantizersTests(unittest.TestCase):
+    def test_rounding_quantizer_on_real_data(self):
+        a = np.array([[3.4, 8.], [0, 0.6]])
+
+        from quantizers import RoundingQuantizer
+
+        quantizer = RoundingQuantizer()
+        expected_res = np.array([[3, 8], [0, 1]])
+        res = quantizer.quantize(a)
+        self.assertTrue(np.allclose(res, expected_res))
+
+        res = quantizer.restore(res)
+        self.assertTrue(np.allclose(res, expected_res))
+
+    def test_rounding_quantizer_on_complex_data(self):
+        a = np.array([[1.7j, 3j], [0j, 0.6+1j]])
+
+        from quantizers import RoundingQuantizer
+
+        quantizer = RoundingQuantizer()
+        expected_res = np.array([[2j, 3j], [0j, 1+1j]])
+        res = quantizer.quantize(a)
+        self.assertTrue(np.allclose(res, expected_res))
+
+        res = quantizer.restore(res)
+        self.assertTrue(np.allclose(res, expected_res))
+
+    def test_discarding_quantizer(self):
+        from quantizers import DiscardingQuantizer
+        quantizer = DiscardingQuantizer(2, 1)
+        a = quantizer.quantize(np.arange(9).reshape(3, 3))
+
+        expected_result = np.array([[0, 1, 2],
+                                    [3, 4, 0],
+                                    [6, 7, 0]])
+
+        self.assertTrue(np.allclose(a, expected_result))
+        res = quantizer.restore(a)
+        self.assertTrue(np.allclose(a, expected_result))
 
 
 if __name__ == '__main__':
