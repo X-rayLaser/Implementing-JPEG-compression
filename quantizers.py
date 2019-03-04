@@ -18,3 +18,14 @@ class DiscardingQuantizer(RoundingQuantizer):
         res = np.round(a)
         res[self.ykeep:, self.xkeep:] = 0
         return res
+
+
+class ModuloQuantizer(RoundingQuantizer):
+    def __init__(self, divisor=40):
+        self.divisor = divisor
+
+    def quantize(self, a):
+        return np.round(a / float(self.divisor))
+
+    def restore(self, a):
+        return a * self.divisor

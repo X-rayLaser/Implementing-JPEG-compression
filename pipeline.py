@@ -1,6 +1,8 @@
 import numpy as np
 from util import split_into_blocks, pad_array, calculate_padding, inflate
 from transforms import DCT
+from quantizers import RoundingQuantizer, DiscardingQuantizer,\
+    ModuloQuantizer
 
 
 def undo_pad_array(a, padding):
@@ -62,12 +64,10 @@ def undo_change_basis(a, dct_size, transform='DCT'):
     return res
 
 
-def quantize(a, dct_size):
+def quantize(a, dct_size, quantizer=RoundingQuantizer()):
     res = np.zeros(a.shape, dtype=np.float)
 
     def f(dct_block):
-        from quantizers import DiscardingQuantizer
-        quantizer = DiscardingQuantizer(4, 4)
         return quantizer.quantize(dct_block)
 
     apply_blockwise(a, f, dct_size, res)
@@ -75,12 +75,10 @@ def quantize(a, dct_size):
     return res
 
 
-def invert_quantize(a, dct_size):
+def invert_quantize(a, dct_size, quantizer=RoundingQuantizer()):
     res = np.zeros(a.shape, dtype=np.float)
 
     def f(dct_block):
-        from quantizers import DiscardingQuantizer
-        quantizer = DiscardingQuantizer(4, 4)
         return quantizer.restore(dct_block)
 
     apply_blockwise(a, f, dct_size, res)

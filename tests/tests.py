@@ -229,6 +229,17 @@ class QuantizersTests(unittest.TestCase):
         res = quantizer.restore(a)
         self.assertTrue(np.allclose(a, expected_result))
 
+    def test_modulo_quantizer(self):
+        from quantizers import ModuloQuantizer
+        quantizer = ModuloQuantizer(40)
+        a = quantizer.quantize(np.array([80, 24, 169]))
+
+        expected_result = np.array([[2, 1, 4]])
+
+        self.assertTrue(np.allclose(a, expected_result))
+        res = quantizer.restore(a)
+        self.assertTrue(np.allclose(res, np.array([80, 40, 160])))
+
 
 if __name__ == '__main__':
     unittest.main()
