@@ -73,7 +73,7 @@ def split_into_blocks(a, block_size):
     new_width = round(a.shape[1] // block_size)
 
     blocks = np.zeros((new_height, new_width, block_size, block_size),
-                      dtype=np.int)
+                      dtype=a.dtype)
 
     for j, column in block_columns(a, block_size):
         for y in range(0, new_height):

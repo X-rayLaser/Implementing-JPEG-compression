@@ -5,14 +5,17 @@ from util import band_to_array
 from pipeline import compress_band
 
 
-def compress(input_fname, output_fname, block_size=2, dct_size=8):
+def compress(input_fname, output_fname, block_size=2, dct_size=8, transform='DCT'):
     im = Image.open(input_fname).convert('YCbCr')
 
     y, cb, cr = im.split()
 
-    res_y = compress_band(band_to_array(y), block_size=1, dct_size=dct_size)
-    res_cb = compress_band(band_to_array(cb), block_size, dct_size)
-    res_cr = compress_band(band_to_array(cr), block_size, dct_size)
+    res_y = compress_band(band_to_array(y), block_size=1, dct_size=dct_size,
+                          transform=transform)
+    res_cb = compress_band(band_to_array(cb), block_size, dct_size,
+                           transform=transform)
+    res_cr = compress_band(band_to_array(cr), block_size, dct_size,
+                           transform=transform)
 
     d = {
         'width': im.width,
@@ -43,6 +46,10 @@ if __name__ == '__main__':
     parser.add_argument('--dct_size', action='store', type=int, default=8,
                         help='size of block for DCT transform')
 
+    parser.add_argument('--transform', action='store', type=str, default='DCT',
+                        help='type of discrete transform (DCT vs DFT)')
+
     args = parser.parse_args()
 
-    compress(args.infile, args.outfile, block_size=args.block_size)
+    compress(args.infile, args.outfile, block_size=args.block_size,
+             dct_size=args.dct_size, transform=args.transform)
