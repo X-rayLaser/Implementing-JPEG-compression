@@ -6,7 +6,8 @@ sys.path.insert(0, '../')
 from util import split_into_blocks, BadArrayShapeError, EmptyArrayError
 from util import pad_array, padded_size
 from transforms import DCT
-from pipeline import subsample, compress_band, decompress_band, CompressionResult
+from pipeline import compress_band, decompress_band, SubSampling,\
+    Configuration, CompressionResult
 
 
 class PaddingTests(unittest.TestCase):
@@ -91,14 +92,20 @@ class SubsampleTests(unittest.TestCase):
                       [0, 0, 2, 2],
                       [0, 4, 2, 2]])
 
-        res = subsample(a, block_size=2)
+        config = Configuration(width=123, height=854, block_size=2,
+                               dct_size=2, transform='DCT', quantization='')
+        sub_sampling = SubSampling(config)
+        res = sub_sampling.execute(a)
         self.assertEqual(res.shape, (2, 2))
         self.assertEqual(res[0][0], 2)
         self.assertEqual(res[0][1], 3)
         self.assertEqual(res[1][0], 1)
         self.assertEqual(res[1][1], 2)
 
-        res = subsample(a, block_size=4)
+        config = Configuration(width=123, height=854, block_size=4,
+                               dct_size=2, transform='DCT', quantization='')
+        sub_sampling = SubSampling(config)
+        res = sub_sampling.execute(a)
         self.assertEqual(res.shape, (1, 1))
         self.assertEqual(res[0][0], 2)
 
@@ -164,8 +171,8 @@ class PipelineTests(unittest.TestCase):
     def test_serializability_for_integer_valued_arrays(self):
         data = np.arange(18).reshape(6, 3)
         original = CompressionResult(data=data, block_size=3,
-                                     dct_block_size=9, subsampling_padding=3,
-                                     dct_padding=2, transform_type='DFT')
+                                     dct_block_size=9, transform_type='DFT',
+                                     width=323, height=766)
 
         d = json.loads(json.dumps(original.as_dict()))
         reconstructed = CompressionResult.from_dict(d)
@@ -173,15 +180,13 @@ class PipelineTests(unittest.TestCase):
         self.assertTrue(np.allclose(original.data, reconstructed.data))
         self.assertEqual(original.block_size, reconstructed.block_size)
         self.assertEqual(original.dct_block_size, reconstructed.dct_block_size)
-        self.assertEqual(original.subsampling_padding, reconstructed.subsampling_padding)
-        self.assertEqual(original.dct_padding, reconstructed.dct_padding)
         self.assertEqual(original.transform_type, reconstructed.transform_type)
 
     def test_serializability_for_complex_valued_arrays(self):
         data = np.array([[2+3j, 3, -10j], [0j, 2-4j, -5]])
         original = CompressionResult(data=data, block_size=3,
-                                     dct_block_size=9, subsampling_padding=3,
-                                     dct_padding=2, transform_type='DFT')
+                                     dct_block_size=9, transform_type='DFT',
+                                     width=532, height=767)
 
         d = json.loads(json.dumps(original.as_dict()))
         reconstructed = CompressionResult.from_dict(d)

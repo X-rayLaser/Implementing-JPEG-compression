@@ -40,6 +40,12 @@ def pad_array(a, block_size):
     return a
 
 
+def undo_pad_array(a, padding):
+    new_height = a.shape[0] - padding[0]
+    new_width = a.shape[1] - padding[1]
+    return a[:new_height, :new_width]
+
+
 def extract_nth_block(blocks_column, block_size, n):
     i = n * block_size
     return blocks_column[i:i + block_size]
