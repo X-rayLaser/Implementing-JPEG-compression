@@ -20,7 +20,7 @@ class DiscardingQuantizer(RoundingQuantizer):
         return res
 
 
-class ModuloQuantizer(RoundingQuantizer):
+class DivisionQuantizer(RoundingQuantizer):
     def __init__(self, divisor=40):
         self.divisor = divisor
 

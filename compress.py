@@ -2,17 +2,19 @@ import json
 import argparse
 from PIL import Image
 from util import band_to_array
-from pipeline import compress_band, Configuration
+from pipeline import compress_band, Configuration, QuantizationMethod
 
 
-def compress(input_fname, output_fname, block_size=2, dct_size=8, transform='DCT'):
+def compress(input_fname, output_fname, block_size=2, dct_size=8,
+             transform='DCT', quantization=None):
     im = Image.open(input_fname).convert('YCbCr')
 
     y, cb, cr = im.split()
 
     config = Configuration(width=im.width, height=im.height,
                            block_size=block_size, dct_size=dct_size,
-                           transform=transform, quantization='')
+                           transform=transform, quantization=quantization
+                           )
 
     res_y = compress_band(band_to_array(y), config)
     res_cb = compress_band(band_to_array(cb), config)
@@ -50,7 +52,26 @@ if __name__ == '__main__':
     parser.add_argument('--transform', action='store', type=str, default='DCT',
                         help='type of discrete transform (DCT vs DFT)')
 
+    parser.add_argument('--quantization', action='store', type=str, default='none',
+                        help='type of quantization to use: on of none, discard, divide, qtable ')
+
+    parser.add_argument('--qkeep', action='store', type=int, default=2,
+                        help='specifies how many coefficients to keep along both axes,'
+                             'applied only if quantization is set to "discard"')
+
+    parser.add_argument('--qdivisor', action='store', type=int, default=40,
+                        help='specifies an integer used to divide coefficients by,'
+                             'applied only if quantization is set to "divide"')
+
     args = parser.parse_args()
 
+    if args.quantization == 'discard':
+        quant_method = QuantizationMethod('discard', xkeep=args.qkeep, ykeep=args.qkeep)
+    elif args.quantization == 'divide':
+        quant_method = QuantizationMethod('divide', divisor=args.qdivisor)
+    else:
+        quant_method = None
+
     compress(args.infile, args.outfile, block_size=args.block_size,
-             dct_size=args.dct_size, transform=args.transform)
+             dct_size=args.dct_size, transform=args.transform,
+             quantization=quant_method)

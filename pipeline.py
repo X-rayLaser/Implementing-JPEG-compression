@@ -3,7 +3,7 @@ from util import split_into_blocks, pad_array, undo_pad_array,\
     padded_size, inflate
 from transforms import DCT
 from quantizers import RoundingQuantizer, DiscardingQuantizer,\
-    ModuloQuantizer
+    DivisionQuantizer
 
 
 step_classes = []
@@ -18,15 +18,46 @@ class Meta(type):
         return cls
 
 
+class QuantizationMethod:
+    name_to_quantizer = {
+        'none': RoundingQuantizer,
+        'discard': DiscardingQuantizer,
+        'divide': DivisionQuantizer
+    }
+
+    def __init__(self, name, **kwargs):
+        self.name = name
+        self.params = kwargs
+        self.quantizer = self._get_quantizer()
+
+    def _get_quantizer(self):
+        error_msg = 'name {}, params {}'.format(self.name, self.params)
+        if self.name not in self.name_to_quantizer.keys():
+            raise BadQuantizationError(error_msg)
+
+        try:
+            return self.name_to_quantizer[self.name](**self.params)
+        except Exception:
+            raise BadQuantizationError(error_msg)
+
+
+class BadQuantizationError(Exception):
+    pass
+
+
 class Configuration:
     def __init__(self, width, height, block_size=2, dct_size=8,
-                 transform='DCT', quantization=''):
+                 transform='DCT', quantization=None):
         self.width = width
         self.height = height
         self.block_size = block_size
         self.dct_size = dct_size
         self.transform = transform
-        self.quantization = quantization
+
+        if quantization is None:
+            self.quantization = QuantizationMethod('none')
+        else:
+            self.quantization = quantization
 
 
 class AlgorithmStep(metaclass=Meta):
@@ -117,6 +148,7 @@ class BasisChange(AlgorithmStep):
 
         transform = self._config.transform
         dct_size = self._config.dct_size
+
         if transform == 'DCT':
             dct = DCT(dct_size)
             self.apply_blockwise(array, dct.transform_2d_inverse, dct_size, res)
@@ -130,11 +162,10 @@ class BasisChange(AlgorithmStep):
 
 
 class Quantization(AlgorithmStep):
-    # todo: use quantizer based on config
     def execute(self, array):
         res = np.zeros(array.shape, dtype=array.dtype)
 
-        quantizer = RoundingQuantizer()
+        quantizer = self._config.quantization.quantizer
 
         def f(dct_block):
             return quantizer.quantize(dct_block)
@@ -146,7 +177,7 @@ class Quantization(AlgorithmStep):
     def invert(self, array):
         res = np.zeros(array.shape, dtype=array.dtype)
 
-        quantizer = RoundingQuantizer()
+        quantizer = self._config.quantization.quantizer
 
         def f(dct_block):
             return quantizer.restore(dct_block)
@@ -228,7 +259,9 @@ class CompressionResult:
             'dct_block_size': self.config.dct_size,
             'transform': self.config.transform,
             'width': self.config.width,
-            'height': self.config.height
+            'height': self.config.height,
+            'quantization_name': self.config.quantization.name,
+            'quantization_params': self.config.quantization.params
         }
 
     @staticmethod
@@ -244,10 +277,14 @@ class CompressionResult:
         width = d['width']
         height = d['height']
 
+        quantization = QuantizationMethod(d['quantization_name'],
+                                          **d['quantization_params'])
+
         config = Configuration(width=width, height=height,
                                block_size=block_size, dct_size=dct_block_size,
-                               transform=transform_type, quantization='')
+                               transform=transform_type,
+                               quantization=quantization)
         return CompressionResult(data, config)
 
 
-# todo: Pass parameters to compress_band inside Configuration instance, pass this instance to CompressionResult object
+# todo: Add quantization option

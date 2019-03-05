@@ -8,6 +8,7 @@ from util import pad_array, padded_size
 from transforms import DCT
 from pipeline import compress_band, decompress_band, SubSampling,\
     Configuration, CompressionResult
+from quantizers import RoundingQuantizer, DivisionQuantizer, DiscardingQuantizer
 
 
 class PaddingTests(unittest.TestCase):
@@ -181,7 +182,7 @@ class PipelineTests(unittest.TestCase):
         data = np.arange(18).reshape(6, 3)
 
         config = Configuration(width=323, height=766, block_size=3,
-                               dct_size=9, transform='DFT', quantization='')
+                               dct_size=9, transform='DFT', quantization=None)
 
         original = CompressionResult(data, config)
 
@@ -197,7 +198,7 @@ class PipelineTests(unittest.TestCase):
         data = np.array([[2+3j, 3, -10j], [0j, 2-4j, -5]])
 
         config = Configuration(width=323, height=766, block_size=3,
-                               dct_size=9, transform='DFT', quantization='')
+                               dct_size=9, transform='DFT', quantization=None)
         original = CompressionResult(data, config)
 
         d = json.loads(json.dumps(original.as_dict()))
@@ -223,8 +224,6 @@ class QuantizersTests(unittest.TestCase):
     def test_rounding_quantizer_on_complex_data(self):
         a = np.array([[1.7j, 3j], [0j, 0.6+1j]])
 
-        from quantizers import RoundingQuantizer
-
         quantizer = RoundingQuantizer()
         expected_res = np.array([[2j, 3j], [0j, 1+1j]])
         res = quantizer.quantize(a)
@@ -234,7 +233,6 @@ class QuantizersTests(unittest.TestCase):
         self.assertTrue(np.allclose(res, expected_res))
 
     def test_discarding_quantizer(self):
-        from quantizers import DiscardingQuantizer
         quantizer = DiscardingQuantizer(2, 1)
         a = quantizer.quantize(np.arange(9).reshape(3, 3))
 
@@ -244,11 +242,10 @@ class QuantizersTests(unittest.TestCase):
 
         self.assertTrue(np.allclose(a, expected_result))
         res = quantizer.restore(a)
-        self.assertTrue(np.allclose(a, expected_result))
+        self.assertTrue(np.allclose(res, expected_result))
 
     def test_modulo_quantizer(self):
-        from quantizers import ModuloQuantizer
-        quantizer = ModuloQuantizer(40)
+        quantizer = DivisionQuantizer(40)
         a = quantizer.quantize(np.array([80, 24, 169]))
 
         expected_result = np.array([[2, 1, 4]])
