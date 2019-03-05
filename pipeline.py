@@ -86,10 +86,8 @@ class DCTPadding(AlgorithmStep):
 
         tmp_w = padded_size(w, self._config.block_size) // self._config.block_size
         tmp_h = padded_size(h, self._config.block_size) // self._config.block_size
-        padded_width = padded_size(tmp_w,
-                                   self._config.dct_size)
-        padded_height = padded_size(tmp_h,
-                                    self._config.dct_size)
+        padded_width = padded_size(tmp_w, self._config.dct_size)
+        padded_height = padded_size(tmp_h, self._config.dct_size)
 
         padding = padded_height - tmp_h, padded_width - tmp_w
 
@@ -134,7 +132,7 @@ class BasisChange(AlgorithmStep):
 class Quantization(AlgorithmStep):
     # todo: use quantizer based on config
     def execute(self, array):
-        res = np.zeros(array.shape, dtype=np.float)
+        res = np.zeros(array.shape, dtype=array.dtype)
 
         quantizer = RoundingQuantizer()
 
@@ -146,7 +144,7 @@ class Quantization(AlgorithmStep):
         return res
 
     def invert(self, array):
-        res = np.zeros(array.shape, dtype=np.float)
+        res = np.zeros(array.shape, dtype=array.dtype)
 
         quantizer = RoundingQuantizer()
 
