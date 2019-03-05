@@ -3,7 +3,7 @@ from util import split_into_blocks, pad_array, undo_pad_array,\
     padded_size, inflate
 from transforms import DCT
 from quantizers import RoundingQuantizer, DiscardingQuantizer,\
-    DivisionQuantizer
+    DivisionQuantizer, JpegQuantizationTable
 
 
 step_classes = []
@@ -22,7 +22,8 @@ class QuantizationMethod:
     name_to_quantizer = {
         'none': RoundingQuantizer,
         'discard': DiscardingQuantizer,
-        'divide': DivisionQuantizer
+        'divide': DivisionQuantizer,
+        'qtable': JpegQuantizationTable
     }
 
     def __init__(self, name, **kwargs):
@@ -57,7 +58,13 @@ class Configuration:
         if quantization is None:
             self.quantization = QuantizationMethod('none')
         else:
+            if quantization.name == 'qtable' and dct_size != 8:
+                raise BadQuantizationError()
             self.quantization = quantization
+
+
+class BadQuantizationError(Exception):
+    pass
 
 
 class AlgorithmStep(metaclass=Meta):

@@ -94,7 +94,7 @@ class SubsampleTests(unittest.TestCase):
                       [0, 4, 2, 2]])
 
         config = Configuration(width=123, height=854, block_size=2,
-                               dct_size=2, transform='DCT', quantization='')
+                               dct_size=2, transform='DCT', quantization=None)
         sub_sampling = SubSampling(config)
         res = sub_sampling.execute(a)
         self.assertEqual(res.shape, (2, 2))
@@ -104,7 +104,7 @@ class SubsampleTests(unittest.TestCase):
         self.assertEqual(res[1][1], 2)
 
         config = Configuration(width=123, height=854, block_size=4,
-                               dct_size=2, transform='DCT', quantization='')
+                               dct_size=2, transform='DCT', quantization=None)
         sub_sampling = SubSampling(config)
         res = sub_sampling.execute(a)
         self.assertEqual(res.shape, (1, 1))

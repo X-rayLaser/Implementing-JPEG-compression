@@ -69,6 +69,8 @@ if __name__ == '__main__':
         quant_method = QuantizationMethod('discard', xkeep=args.qkeep, ykeep=args.qkeep)
     elif args.quantization == 'divide':
         quant_method = QuantizationMethod('divide', divisor=args.qdivisor)
+    elif args.quantization == 'qtable':
+        quant_method = QuantizationMethod('qtable')
     else:
         quant_method = None
 
