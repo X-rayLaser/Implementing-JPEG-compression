@@ -5,6 +5,102 @@ from quantizers import RoundingQuantizer, DiscardingQuantizer,\
     ModuloQuantizer
 
 
+step_classes = []
+
+
+class Meta(type):
+    def __new__(meta, name, bases, class_dict):
+        cls = type.__new__(meta, name, bases, class_dict)
+
+        if name != 'AlgorithmStep':
+            step_classes.append(cls)
+        return cls
+
+
+class Configuration:
+    def __init__(self, width, height, block_size, dct_size,
+                 transform, quantization):
+        self.width = width
+        self.height = height
+        self.block_size = block_size
+        self.dct_size = dct_size
+        self.transform = transform
+        self.quantization = quantization
+
+
+class AlgorithmStep(metaclass=Meta):
+    def __init__(self, config):
+        self._config = config
+
+    def execute(self, array):
+        raise NotImplementedError
+
+    def invert(self, array):
+        raise NotImplementedError
+
+    def calculate_padding(self, factor):
+        from util import padded_size
+        w, h = self._config.width, self._config.height
+        padded_width = padded_size(w, factor)
+        padded_height = padded_size(h, factor)
+        return padded_height - h, padded_width - w
+
+
+class Padding(AlgorithmStep):
+    def execute(self, array):
+        return pad_array(array, self._config.block_size)
+
+    def invert(self, array):
+        padding = self.calculate_padding(self._config.block_size)
+        return undo_pad_array(array, padding)
+
+
+class SubSampling(AlgorithmStep):
+    def execute(self, array):
+        return subsample(array, self._config.block_size)
+
+    def invert(self, array):
+        return undo_subsample(array, self._config.block_size)
+
+
+class DCTPadding(AlgorithmStep):
+    def execute(self, array):
+        return pad_array(array, self._config.dct_size)
+
+    def invert(self, array):
+        from util import padded_size
+        w, h = self._config.width, self._config.height
+
+        tmp_w = padded_size(w, self._config.block_size) // self._config.block_size
+        tmp_h = padded_size(h, self._config.block_size) // self._config.block_size
+        padded_width = padded_size(tmp_w,
+                                   self._config.dct_size)
+        padded_height = padded_size(tmp_h,
+                                    self._config.dct_size)
+
+        padding = padded_height - tmp_h, padded_width - tmp_w
+
+        return undo_pad_array(array, padding)
+
+
+class BasisChange(AlgorithmStep):
+    def execute(self, array):
+        return change_basis(array, self._config.dct_size, self._config.transform)
+
+    def invert(self, array):
+        a = undo_change_basis(array, self._config.dct_size, self._config.transform)
+        return np.array(np.round(a), dtype=np.int)
+
+
+class Quantization(AlgorithmStep):
+    # todo: use quantizer based on config
+    def execute(self, array):
+        return quantize(array, self._config.dct_size)
+
+    def invert(self, array):
+        return invert_quantize(array, self._config.dct_size)
+
+
 def undo_pad_array(a, padding):
     new_height = a.shape[0] - padding[0]
     new_width = a.shape[1] - padding[1]
@@ -86,7 +182,37 @@ def invert_quantize(a, dct_size, quantizer=RoundingQuantizer()):
     return res
 
 
-def compress_band(a, block_size=2, dct_size=8, transform='DCT'):
+def new_compress(a, block_size=2, dct_size=8, transform='DCT'):
+    config = Configuration(width=a.shape[1], height=a.shape[0],
+                           block_size=block_size, dct_size=dct_size,
+                           transform=transform, quantization='')
+
+    for cls in step_classes:
+        step = cls(config)
+        a = step.execute(a)
+
+    return CompressionResult(a, block_size, dct_size, 0, 0,
+                             transform, width=config.width, height=config.height)
+
+
+def new_decompress(compression_result):
+    cr = compression_result
+    config = Configuration(width=cr.width, height=cr.height,
+                           block_size=cr.block_size, dct_size=cr.dct_block_size,
+                           transform=cr.transform_type, quantization='')
+
+    a = cr.data
+
+    reversed_steps = list(step_classes)
+    reversed_steps.reverse()
+    for cls in reversed_steps:
+        step = cls(config)
+        a = step.invert(a)
+
+    return a
+
+
+def old_compress(a, block_size=2, dct_size=8, transform='DCT'):
     padding = calculate_padding(a, block_size)
     a = pad_array(a, block_size)
     a = subsample(a, block_size)
@@ -100,7 +226,7 @@ def compress_band(a, block_size=2, dct_size=8, transform='DCT'):
                              transform)
 
 
-def decompress_band(compression_result):
+def old_decompress(compression_result):
     a = compression_result.data
 
     a = invert_quantize(a, compression_result.dct_block_size)
@@ -114,15 +240,25 @@ def decompress_band(compression_result):
     return a
 
 
+def compress_band(a, block_size=2, dct_size=8, transform='DCT'):
+    return new_compress(a, block_size, dct_size, transform)
+
+
+def decompress_band(compression_result):
+    return new_decompress(compression_result)
+
+
 class CompressionResult:
     def __init__(self, data, block_size, dct_block_size,
-                 subsampling_padding, dct_padding, transform_type):
+                 subsampling_padding, dct_padding, transform_type, width=0, height=0):
         self.data = data
         self.block_size = block_size
         self.dct_block_size = dct_block_size
         self.subsampling_padding = subsampling_padding
         self.dct_padding = dct_padding
         self.transform_type = transform_type
+        self.width = width
+        self.height = height
 
     def _serialize_complex(self, a):
         res = []
@@ -171,7 +307,9 @@ class CompressionResult:
             'dct_block_size': self.dct_block_size,
             'subsampling_padding': self.subsampling_padding,
             'dct_padding': self.dct_padding,
-            'transform_type': self.transform_type
+            'transform_type': self.transform_type,
+            'width': self.width,
+            'height': self.height
         }
 
     @staticmethod
@@ -186,8 +324,12 @@ class CompressionResult:
         dct_padding = d['dct_padding']
         subsampling_padding = d['subsampling_padding']
         transform_type = d['transform_type']
+        width = d['width']
+        height = d['height']
         return CompressionResult(data, block_size,
                                  dct_block_size,
                                  subsampling_padding,
                                  dct_padding,
-                                 transform_type)
+                                 transform_type,
+                                 width=width,
+                                 height=height)
