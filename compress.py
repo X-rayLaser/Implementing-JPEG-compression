@@ -2,7 +2,7 @@ import json
 import argparse
 from PIL import Image
 from util import band_to_array
-from pipeline import compress_band
+from pipeline import compress_band, Configuration
 
 
 def compress(input_fname, output_fname, block_size=2, dct_size=8, transform='DCT'):
@@ -10,12 +10,13 @@ def compress(input_fname, output_fname, block_size=2, dct_size=8, transform='DCT
 
     y, cb, cr = im.split()
 
-    res_y = compress_band(band_to_array(y), block_size=1, dct_size=dct_size,
-                          transform=transform)
-    res_cb = compress_band(band_to_array(cb), block_size, dct_size,
-                           transform=transform)
-    res_cr = compress_band(band_to_array(cr), block_size, dct_size,
-                           transform=transform)
+    config = Configuration(width=im.width, height=im.height,
+                           block_size=block_size, dct_size=dct_size,
+                           transform=transform, quantization='')
+
+    res_y = compress_band(band_to_array(y), config)
+    res_cb = compress_band(band_to_array(cb), config)
+    res_cr = compress_band(band_to_array(cr), config)
 
     d = {
         'width': im.width,

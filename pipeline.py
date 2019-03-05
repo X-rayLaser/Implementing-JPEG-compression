@@ -19,8 +19,8 @@ class Meta(type):
 
 
 class Configuration:
-    def __init__(self, width, height, block_size, dct_size,
-                 transform, quantization):
+    def __init__(self, width, height, block_size=2, dct_size=8,
+                 transform='DCT', quantization=''):
         self.width = width
         self.height = height
         self.block_size = block_size
@@ -158,45 +158,30 @@ class Quantization(AlgorithmStep):
         return res
 
 
-def compress_band(a, block_size=2, dct_size=8, transform='DCT'):
-    config = Configuration(width=a.shape[1], height=a.shape[0],
-                           block_size=block_size, dct_size=dct_size,
-                           transform=transform, quantization='')
-
+def compress_band(a, config):
     for cls in step_classes:
         step = cls(config)
         a = step.execute(a)
 
-    return CompressionResult(a, block_size, dct_size, transform,
-                             width=config.width, height=config.height)
+    return CompressionResult(a, config)
 
 
 def decompress_band(compression_result):
-    cr = compression_result
-    config = Configuration(width=cr.width, height=cr.height,
-                           block_size=cr.block_size, dct_size=cr.dct_block_size,
-                           transform=cr.transform_type, quantization='')
-
-    a = cr.data
+    a = compression_result.data
 
     reversed_steps = list(step_classes)
     reversed_steps.reverse()
     for cls in reversed_steps:
-        step = cls(config)
+        step = cls(compression_result.config)
         a = step.invert(a)
 
     return a
 
 
 class CompressionResult:
-    def __init__(self, data, block_size, dct_block_size,
-                 transform_type, width, height):
+    def __init__(self, data, config):
         self.data = data
-        self.block_size = block_size
-        self.dct_block_size = dct_block_size
-        self.transform_type = transform_type
-        self.width = width
-        self.height = height
+        self.config = config
 
     def _serialize_complex(self, a):
         res = []
@@ -241,11 +226,11 @@ class CompressionResult:
 
         return {
             'data': data,
-            'block_size': self.block_size,
-            'dct_block_size': self.dct_block_size,
-            'transform_type': self.transform_type,
-            'width': self.width,
-            'height': self.height
+            'block_size': self.config.block_size,
+            'dct_block_size': self.config.dct_size,
+            'transform': self.config.transform,
+            'width': self.config.width,
+            'height': self.config.height
         }
 
     @staticmethod
@@ -257,11 +242,14 @@ class CompressionResult:
 
         block_size = d['block_size']
         dct_block_size = d['dct_block_size']
-        transform_type = d['transform_type']
+        transform_type = d['transform']
         width = d['width']
         height = d['height']
-        return CompressionResult(data, block_size,
-                                 dct_block_size,
-                                 transform_type,
-                                 width=width,
-                                 height=height)
+
+        config = Configuration(width=width, height=height,
+                               block_size=block_size, dct_size=dct_block_size,
+                               transform=transform_type, quantization='')
+        return CompressionResult(data, config)
+
+
+# todo: Pass parameters to compress_band inside Configuration instance, pass this instance to CompressionResult object
