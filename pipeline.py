@@ -10,12 +10,41 @@ step_classes = []
 
 
 class Meta(type):
+    @staticmethod
+    def validate_index(cls, name, class_dict):
+        attr_name = 'step_index'
+        if attr_name not in class_dict:
+            raise MissingStepIndexError(
+                'Class {} has not defined "{}" class attribute'.format(
+                    name, attr_name
+                )
+            )
+
+        expected_index = len(step_classes)
+        step_index = cls.step_index
+
+        if step_index != expected_index:
+            raise IndexOutOfOrderError(
+                '{}-th algorithm step "{}" got index {}'.format(
+                    expected_index, name, step_index
+                )
+            )
+
     def __new__(meta, name, bases, class_dict):
         cls = type.__new__(meta, name, bases, class_dict)
 
         if name != 'AlgorithmStep':
+            Meta.validate_index(cls, name, class_dict)
             step_classes.append(cls)
         return cls
+
+
+class IndexOutOfOrderError(Exception):
+    pass
+
+
+class MissingStepIndexError(Exception):
+    pass
 
 
 class QuantizationMethod:
@@ -40,10 +69,6 @@ class QuantizationMethod:
             return self.name_to_quantizer[self.name](**self.params)
         except Exception:
             raise BadQuantizationError(error_msg)
-
-
-class BadQuantizationError(Exception):
-    pass
 
 
 class Configuration:
@@ -98,6 +123,8 @@ class AlgorithmStep(metaclass=Meta):
 
 
 class Padding(AlgorithmStep):
+    step_index = 0
+
     def execute(self, array):
         return pad_array(array, self._config.block_size)
 
@@ -107,6 +134,8 @@ class Padding(AlgorithmStep):
 
 
 class SubSampling(AlgorithmStep):
+    step_index = 1
+
     def execute(self, array):
         blocks_matrix = split_into_blocks(array, self._config.block_size)
         return np.mean(blocks_matrix, axis=(2, 3))
@@ -116,6 +145,8 @@ class SubSampling(AlgorithmStep):
 
 
 class DCTPadding(AlgorithmStep):
+    step_index = 2
+
     def execute(self, array):
         return pad_array(array, self._config.dct_size)
 
@@ -133,6 +164,8 @@ class DCTPadding(AlgorithmStep):
 
 
 class BasisChange(AlgorithmStep):
+    step_index = 3
+
     def execute(self, array):
         transform = self._config.transform
         dct_size = self._config.dct_size
@@ -169,6 +202,8 @@ class BasisChange(AlgorithmStep):
 
 
 class Quantization(AlgorithmStep):
+    step_index = 4
+
     def execute(self, array):
         res = np.zeros(array.shape, dtype=array.dtype)
 
@@ -292,6 +327,3 @@ class CompressionResult:
                                transform=transform_type,
                                quantization=quantization)
         return CompressionResult(data, config)
-
-
-# todo: Add quantization option
