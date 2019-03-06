@@ -10,13 +10,13 @@ class RoundingQuantizer:
 
 
 class DiscardingQuantizer(RoundingQuantizer):
-    def __init__(self, xkeep=2, ykeep=2):
-        self.xkeep = xkeep
-        self.ykeep = ykeep
+    def __init__(self, keep=2):
+        self.keep = keep
 
     def quantize(self, a):
         res = np.round(a)
-        res[self.ykeep:, self.xkeep:] = 0
+        res[self.keep:] = 0
+        res[:, self.keep:] = 0
         return res
 
 

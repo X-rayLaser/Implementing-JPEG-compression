@@ -7,7 +7,7 @@ from util import split_into_blocks, BadArrayShapeError, EmptyArrayError
 from util import pad_array, padded_size
 from transforms import DCT
 from pipeline import compress_band, decompress_band, SubSampling,\
-    Configuration, CompressionResult
+    Configuration, CompressionResult, QuantizationMethod
 from quantizers import RoundingQuantizer, DivisionQuantizer, DiscardingQuantizer
 
 
@@ -153,6 +153,24 @@ class PipelineTests(unittest.TestCase):
         ))
         self.assertTrue(np.allclose(original, restored, rtol=1))
 
+    def test_preserves_allowed_range(self):
+        original = np.array([[220, 255, 123, 205],
+                             [255, 255, 112, 10],
+                             [15, 51, 83, 221],
+                             [239, 73, 62, 22]])
+
+        self.assertTrue(np.all(original < 256))
+        self.assertTrue(np.all(original > -1))
+
+        restored = decompress_band(compress_band(
+            original, Configuration(
+                width=16, height=16, block_size=1, dct_size=2,
+                quantization=QuantizationMethod('divide', divisor=129))
+        ))
+
+        self.assertTrue(np.all(restored < 256))
+        self.assertTrue(np.all(restored > -1))
+
     def test_fourier_transform_option(self):
         original = np.arange(128).reshape(8, 16)
 
@@ -233,12 +251,12 @@ class QuantizersTests(unittest.TestCase):
         self.assertTrue(np.allclose(res, expected_res))
 
     def test_discarding_quantizer(self):
-        quantizer = DiscardingQuantizer(2, 1)
+        quantizer = DiscardingQuantizer(2)
         a = quantizer.quantize(np.arange(9).reshape(3, 3))
 
-        expected_result = np.array([[0, 1, 2],
+        expected_result = np.array([[0, 1, 0],
                                     [3, 4, 0],
-                                    [6, 7, 0]])
+                                    [0, 0, 0]])
 
         self.assertTrue(np.allclose(a, expected_result))
         res = quantizer.restore(a)

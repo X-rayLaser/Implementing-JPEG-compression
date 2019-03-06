@@ -126,6 +126,9 @@ class Padding(AlgorithmStep):
     step_index = 0
 
     def execute(self, array):
+        if self._config.block_size == 1:
+            return array
+
         return pad_array(array, self._config.block_size)
 
     def invert(self, array):
@@ -163,8 +166,21 @@ class DCTPadding(AlgorithmStep):
         return undo_pad_array(array, padding)
 
 
-class BasisChange(AlgorithmStep):
+class Normalization(AlgorithmStep):
     step_index = 3
+
+    def execute(self, array):
+        return array
+
+    def invert(self, array):
+        for i in range(array.shape[0]):
+            for j in range(array.shape[1]):
+                array[i][j] = max(0, min(255, array[i][j]))
+        return array
+
+
+class BasisChange(AlgorithmStep):
+    step_index = 4
 
     def execute(self, array):
         transform = self._config.transform
@@ -202,7 +218,7 @@ class BasisChange(AlgorithmStep):
 
 
 class Quantization(AlgorithmStep):
-    step_index = 4
+    step_index = 5
 
     def execute(self, array):
         res = np.zeros(array.shape, dtype=array.dtype)

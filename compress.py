@@ -66,7 +66,7 @@ if __name__ == '__main__':
     args = parser.parse_args()
 
     if args.quantization == 'discard':
-        quant_method = QuantizationMethod('discard', xkeep=args.qkeep, ykeep=args.qkeep)
+        quant_method = QuantizationMethod('discard', keep=args.qkeep)
     elif args.quantization == 'divide':
         quant_method = QuantizationMethod('divide', divisor=args.qdivisor)
     elif args.quantization == 'qtable':
