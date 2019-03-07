@@ -260,7 +260,7 @@ class ZigzagOrder(AlgorithmStep):
 
         zigzag = Zigzag(dct_size)
 
-        res = np.zeros(shape)
+        res = np.zeros(shape, dtype=array.dtype)
         for block, y, x in self.blocks(array, dct_size):
             i = y * dct_size
             j = x * dct_size
@@ -275,7 +275,8 @@ class ZigzagOrder(AlgorithmStep):
 
         zigzag = Zigzag(dct_size)
 
-        res = np.zeros((vert_blocks * dct_size, hor_blocks * dct_size))
+        res = np.zeros((vert_blocks * dct_size, hor_blocks * dct_size),
+                       dtype=array.dtype)
 
         for y in range(vert_blocks):
             for x in range(hor_blocks):
@@ -308,51 +309,41 @@ def decompress_band(compression_result):
     return a
 
 
+class ArraySerializer:
+    @staticmethod
+    def serialize(a):
+        d = {
+            'shape': a.shape,
+            'complex_dtype': a.dtype == np.complex
+        }
+
+        if a.dtype == np.complex:
+            values = [{'real': c.real, 'imag': c.imag} for c in a.flatten()]
+        else:
+            values = a.tolist()
+        d['values'] = values
+        return d
+
+    @staticmethod
+    def deserialize(d):
+        if d['complex_dtype']:
+            complex_values = d['values']
+            shape = d['shape']
+
+            res = list(map(lambda cv: np.complex(cv['real'], cv['imag']),
+                           complex_values))
+            return np.array(res).reshape(*shape)
+        else:
+            return np.array(d['values'])
+
+
 class CompressionResult:
     def __init__(self, data, config):
         self.data = data
         self.config = config
 
-    def _serialize_complex(self, a):
-        res = []
-        for i in range(a.shape[0]):
-            res.append([])
-            for j in range(a.shape[1]):
-                c = a[i, j]
-                res[i].append({
-                    'real': c.real,
-                    'imag': c.imag
-                })
-
-        return res
-
-    @staticmethod
-    def _reconstruct_complex(list_of_lists):
-        assert len(list_of_lists) > 0
-        res = []
-        nrows = len(list_of_lists)
-        ncols = len(list_of_lists[0])
-
-        for i in range(nrows):
-            res.append([])
-            for j in range(ncols):
-                d = list_of_lists[i][j]
-                complex_val = np.complex(d['real'], d['imag'])
-                res[i].append(complex_val)
-
-        return np.array(res)
-
     def as_dict(self):
-        if self.data.dtype == np.complex:
-            data = {
-                'dtype': 'complex',
-                'values': self._serialize_complex(self.data)
-            }
-        else:
-            data = {
-                'dtype': 'int',
-                'values': self.data.tolist()
-            }
+        data = ArraySerializer.serialize(self.data)
 
         return {
             'data': data,
@@ -367,11 +358,7 @@ class CompressionResult:
 
     @staticmethod
     def from_dict(d):
-        if d['data']['dtype'] == 'complex':
-            data = CompressionResult._reconstruct_complex(d['data']['values'])
-        else:
-            data = np.array(d['data']['values'])
-
+        data = ArraySerializer.deserialize(d['data'])
         block_size = d['block_size']
         dct_block_size = d['dct_block_size']
         transform_type = d['transform']

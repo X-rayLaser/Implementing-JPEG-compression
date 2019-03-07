@@ -82,3 +82,14 @@ class ZigzagOrderTests(unittest.TestCase):
         self.assertEqual(res.shape, a.shape)
         self.assertEqual(res.tolist(), a.tolist())
 
+    def test_restore_using_complex_numbers(self):
+        a = np.arange(32).reshape(4, 8)
+        a = a * 2j
+
+        config = Configuration(width=8, height=4, block_size=1, dct_size=2)
+        zigzag_step = ZigzagOrder(config)
+
+        res = zigzag_step.invert(zigzag_step.execute(a))
+
+        self.assertEqual(res.shape, a.shape)
+        self.assertEqual(res.tolist(), a.tolist())

@@ -61,7 +61,7 @@ class PipelineTests(unittest.TestCase):
         self.assertTrue(np.allclose(original, restored, rtol=0.000001))
 
     def test_serializability_for_integer_valued_arrays(self):
-        data = np.arange(18).reshape(6, 3)
+        data = np.arange(18).reshape(2, 3, 3)
 
         config = Configuration(width=323, height=766, block_size=3,
                                dct_size=9, transform='DFT', quantization=None)
@@ -77,7 +77,7 @@ class PipelineTests(unittest.TestCase):
         self.assertEqual(original.config.transform, reconstructed.config.transform)
 
     def test_serializability_for_complex_valued_arrays(self):
-        data = np.array([[2+3j, 3, -10j], [0j, 2-4j, -5]])
+        data = (np.arange(64) * 3j).reshape(4, 4, 4)
 
         config = Configuration(width=323, height=766, block_size=3,
                                dct_size=9, transform='DFT', quantization=None)

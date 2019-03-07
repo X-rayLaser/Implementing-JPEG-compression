@@ -126,7 +126,7 @@ class Zigzag:
 
         indices = self.zigzag_indices
 
-        block = np.zeros((self._size, self._size))
+        block = np.zeros((self._size, self._size), dtype=zigzag_array.dtype)
         for value, pos in zip(zigzag_array, indices):
             i, j = pos
             block[i, j] = value
