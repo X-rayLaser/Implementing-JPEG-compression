@@ -8,6 +8,7 @@ from subsample_tests import SubsampleTests
 from basis_change_tests import DctTests
 from quantization_tests import QuantizersTests
 from integration_tests import PipelineTests
+from zigzag_tests import ZigzagOrderTests
 
 
 if __name__ == '__main__':

@@ -108,7 +108,7 @@ class AlgorithmStep(metaclass=Meta):
         padded_height = padded_size(h, factor)
         return padded_height - h, padded_width - w
 
-    def apply_blockwise(self, a, transformation, block_size, res):
+    def blocks(self, a, block_size):
         blocks = split_into_blocks(a, block_size)
 
         h = a.shape[0] // block_size
@@ -118,8 +118,11 @@ class AlgorithmStep(metaclass=Meta):
             for x in range(w):
                 i = y * block_size
                 j = x * block_size
-                block = transformation(blocks[y, x])
-                res[i:i + block_size, j: j + block_size] = block
+                yield blocks[y, x], i, j
+
+    def apply_blockwise(self, a, transformation, block_size, res):
+        for block, i, j in self.blocks(a, block_size):
+            res[i:i + block_size, j: j + block_size] = transformation(block)
 
 
 class Padding(AlgorithmStep):
@@ -243,6 +246,18 @@ class Quantization(AlgorithmStep):
         self.apply_blockwise(array, f, self._config.dct_size, res)
 
         return res
+
+
+class ZigzagOrder(AlgorithmStep):
+    step_index = 6
+
+    def execute(self, array):
+        for block, i, j in self.blocks(array, self._config.dct_size):
+            pass
+        return array
+
+    def invert(self, array):
+        return array
 
 
 def compress_band(a, config):

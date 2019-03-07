@@ -109,3 +109,49 @@ def calculate_padding(a, factor):
 def band_to_array(band):
     pixels = np.array(list(band.getdata()))
     return pixels.reshape((band.height, band.width))
+
+
+def left_top_diagonal(block, row):
+    d = []
+    for i in range(row, -1, -1):
+        j = row - i
+        d.append(block[i, j])
+    return d
+
+
+def bottom_right_diagonal(block, col):
+    size = block.shape[0]
+    d = []
+    for j in range(col, size):
+        top_row = size - 1
+        delta_j = (j - col)
+        i = top_row - delta_j
+        d.append(block[i, j])
+    return d
+
+
+def diagonals(block):
+    size = block.shape[0]
+
+    for row in range(size):
+        yield left_top_diagonal(block, row)
+
+    for col in range(1, size):
+        yield bottom_right_diagonal(block, col)
+
+
+def zigzag(block):
+    assert block.ndim == 2
+    assert block.shape[0] == block.shape[1]
+
+    result_list = []
+
+    count = 0
+
+    for d in diagonals(block):
+        if count % 2 == 1:
+            d.reverse()
+        result_list.extend(d)
+        count += 1
+
+    return np.array(result_list)
