@@ -1,6 +1,6 @@
 import numpy as np
 from util import split_into_blocks, pad_array, undo_pad_array,\
-    padded_size, inflate
+    padded_size, inflate, Zigzag
 from transforms import DCT
 from quantizers import RoundingQuantizer, DiscardingQuantizer,\
     DivisionQuantizer, JpegQuantizationTable
@@ -116,12 +116,12 @@ class AlgorithmStep(metaclass=Meta):
 
         for y in range(0, h):
             for x in range(w):
-                i = y * block_size
-                j = x * block_size
-                yield blocks[y, x], i, j
+                yield blocks[y, x], y, x
 
     def apply_blockwise(self, a, transformation, block_size, res):
-        for block, i, j in self.blocks(a, block_size):
+        for block, y, x in self.blocks(a, block_size):
+            i = y * block_size
+            j = x * block_size
             res[i:i + block_size, j: j + block_size] = transformation(block)
 
 
@@ -252,12 +252,40 @@ class ZigzagOrder(AlgorithmStep):
     step_index = 6
 
     def execute(self, array):
-        for block, i, j in self.blocks(array, self._config.dct_size):
-            pass
-        return array
+        dct_size = self._config.dct_size
+        vert_blocks = array.shape[0] // dct_size
+        hor_blocks = array.shape[1] // dct_size
+
+        shape = (vert_blocks, hor_blocks, dct_size ** 2)
+
+        zigzag = Zigzag(dct_size)
+
+        res = np.zeros(shape)
+        for block, y, x in self.blocks(array, dct_size):
+            i = y * dct_size
+            j = x * dct_size
+            res[y, x] = zigzag.zigzag_order(block)
+
+        return res
 
     def invert(self, array):
-        return array
+        dct_size = self._config.dct_size
+        vert_blocks = array.shape[0]
+        hor_blocks = array.shape[1]
+
+        zigzag = Zigzag(dct_size)
+
+        res = np.zeros((vert_blocks * dct_size, hor_blocks * dct_size))
+
+        for y in range(vert_blocks):
+            for x in range(hor_blocks):
+                block = zigzag.restore(array[y, x])
+                i = y * dct_size
+                j = x * dct_size
+                res[i:i + dct_size, j:j + dct_size] = block.reshape(dct_size,
+                                                                    dct_size)
+
+        return res
 
 
 def compress_band(a, config):
