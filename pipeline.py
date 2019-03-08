@@ -374,29 +374,13 @@ def decompress_band(compression_result):
 class ArraySerializer:
     @staticmethod
     def serialize(a):
-        d = {
-            'shape': a.shape,
-            'complex_dtype': a.dtype == np.complex
+        return {
+            'values': a
         }
-
-        if a.dtype == np.complex:
-            values = [{'real': c.real, 'imag': c.imag} for c in a.flatten()]
-        else:
-            values = a.tolist()
-        d['values'] = values
-        return d
 
     @staticmethod
     def deserialize(d):
-        if d['complex_dtype']:
-            complex_values = d['values']
-            shape = d['shape']
-
-            res = list(map(lambda cv: np.complex(cv['real'], cv['imag']),
-                           complex_values))
-            return np.array(res).reshape(*shape)
-        else:
-            return np.array(d['values'])
+        return d['values']
 
 
 class CompressionResult:
