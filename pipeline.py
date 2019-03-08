@@ -383,13 +383,51 @@ class ArraySerializer:
         return d['values']
 
 
+class ComplexListSerializer:
+    @staticmethod
+    def serialize(complex_tuples):
+        values = []
+        for t in complex_tuples:
+            if len(t) == 3:
+                run_length, size, value = t
+                d = {
+                    'real': np.real(value),
+                    'imag': np.imag(value)
+                }
+                values.append((run_length, size, d))
+            else:
+                values.append(t)
+        return values
+
+    @staticmethod
+    def deserialize(tuples_list):
+        values = []
+
+        for t in tuples_list:
+            if len(t) == 3:
+                run_length, size, d = t
+                complex_value = np.complex(d['real'], d['imag'])
+                values.append((run_length, size, complex_value))
+            else:
+                values.append(t)
+        return values
+
+
 class CompressionResult:
     def __init__(self, data, config):
         self.data = data
         self.config = config
 
+    @staticmethod
+    def get_serializer(transform):
+        if transform == 'DCT':
+            return ArraySerializer
+        else:
+            return ComplexListSerializer
+
     def as_dict(self):
-        data = ArraySerializer.serialize(self.data)
+        serializer = self.get_serializer(self.config.transform)
+        data = serializer.serialize(self.data)
 
         return {
             'data': data,
@@ -404,12 +442,14 @@ class CompressionResult:
 
     @staticmethod
     def from_dict(d):
-        data = ArraySerializer.deserialize(d['data'])
         block_size = d['block_size']
         dct_block_size = d['dct_block_size']
         transform_type = d['transform']
         width = d['width']
         height = d['height']
+
+        serializer = CompressionResult.get_serializer(transform_type)
+        data = serializer.deserialize(d['data'])
 
         quantization = QuantizationMethod(d['quantization_name'],
                                           **d['quantization_params'])

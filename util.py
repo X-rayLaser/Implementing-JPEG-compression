@@ -236,7 +236,11 @@ class RunLengthCode:
         if self.is_EOB():
             return 0, 0
 
-        return self.run_length, self.size, int(round(self.amplitude))
+        if np.iscomplex(self.amplitude):
+            amplitude = self.amplitude
+        else:
+            amplitude = int(round(self.amplitude))
+        return self.run_length, self.size, amplitude
 
     def __eq__(self, other):
         return (self.run_length == other.run_length and
