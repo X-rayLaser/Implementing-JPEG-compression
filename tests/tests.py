@@ -9,7 +9,7 @@ from basis_change_tests import DctTests
 from quantization_tests import QuantizersTests
 from integration_tests import PipelineTests
 from zigzag_tests import ZigzagOrderTests
-from RLE_tests import RunLengthBlockTests
+from RLE_tests import RunLengthBlockTests, RunLengthEncodingTests
 
 
 if __name__ == '__main__':

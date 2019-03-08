@@ -28,7 +28,7 @@ class PipelineTests(unittest.TestCase):
 
         restored = decompress_band(compress_band(
             original, Configuration(
-                width=16, height=16, block_size=1, dct_size=2,
+                width=4, height=4, block_size=1, dct_size=2,
                 quantization=QuantizationMethod('divide', divisor=129))
         ))
 
@@ -56,7 +56,7 @@ class PipelineTests(unittest.TestCase):
         original = np.arange(64).reshape(8, 8)
 
         restored = decompress_band(compress_band(
-            original, Configuration(width=3, height=2, block_size=1, dct_size=1)
+            original, Configuration(width=8, height=8, block_size=1, dct_size=1)
         ))
         self.assertTrue(np.allclose(original, restored, rtol=0.000001))
 

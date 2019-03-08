@@ -198,17 +198,45 @@ class RunLengthCode:
     def all_zeros():
         return RunLengthCode(15, 0, 0)
 
-    def __init__(self, run_length, size, amplitude):
+    @staticmethod
+    def encode(run_length, amplitude):
+        res = []
+
+        n0chains = run_length // RunLengthCode.max_run_length
+
+        for i in range(n0chains):
+            res.append(RunLengthCode.all_zeros())
+
+        run_length = run_length % RunLengthCode.max_run_length
+
+        bit_size = math.ceil(math.log2(abs(amplitude) + 1)) + 1
+        res.append(RunLengthCode(run_length, bit_size, amplitude))
+
+        return res
+
+    def __init__(self, run_length, size, amplitude=0):
         self.run_length = run_length
         self.size = size
         self.amplitude = amplitude
 
-    def is_all_zeros(self):
+    def decode(self):
+        if self.is_zeros_chain():
+            return [0] * self.max_run_length
+
+        return [0] * self.run_length + [self.amplitude]
+
+    def is_zeros_chain(self):
         return (self.run_length == self.max_run_length and
                 self.size == 0 and self.amplitude == 0)
 
     def is_EOB(self):
         return self.run_length == 0 and self.size == 0
+
+    def as_tuple(self):
+        if self.is_EOB():
+            return 0, 0
+
+        return self.run_length, self.size, int(round(self.amplitude))
 
     def __eq__(self, other):
         return (self.run_length == other.run_length and
@@ -234,17 +262,8 @@ class RunLengthBlock:
         prev_index = -1
         for value, index in self.non_zeros(zigzag_array):
             run_length = index - prev_index - 1
-
-            n0chains = run_length // RunLengthCode.max_run_length
-
-            for i in range(n0chains):
-                res.append(RunLengthCode.all_zeros())
-
-            run_length = run_length % RunLengthCode.max_run_length
-
-            import math
-            bit_size = math.ceil(math.log2(abs(value) + 1)) + 1
-            res.append(RunLengthCode(run_length, bit_size, value))
+            code = RunLengthCode.encode(run_length, value)
+            res.extend(code)
             prev_index = index
 
         res.append(RunLengthCode.EOB())
@@ -258,11 +277,6 @@ class RunLengthBlock:
                 res.extend([0] * nzeros)
                 break
 
-            if code.is_all_zeros():
-                res.extend([0] * code.max_run_length)
-            else:
-                nzeros = code.run_length
-                res.extend([0] * nzeros)
-                res.append(code.amplitude)
+            res.extend(code.decode())
 
         return np.array(res)
