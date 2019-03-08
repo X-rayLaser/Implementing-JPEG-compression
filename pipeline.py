@@ -262,8 +262,6 @@ class ZigzagOrder(AlgorithmStep):
 
         res = np.zeros(shape, dtype=array.dtype)
         for block, y, x in self.blocks(array, dct_size):
-            i = y * dct_size
-            j = x * dct_size
             res[y, x] = zigzag.zigzag_order(block)
 
         return res
