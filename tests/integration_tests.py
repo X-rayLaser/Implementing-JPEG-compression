@@ -61,29 +61,33 @@ class PipelineTests(unittest.TestCase):
         self.assertTrue(np.allclose(original, restored, rtol=0.000001))
 
     def test_serializability_for_integer_valued_arrays(self):
-        data = np.arange(18).reshape(2, 3, 3)
+        original = np.arange(64).reshape(8, 8)
 
         config = Configuration(width=323, height=766, block_size=3,
-                               dct_size=9, transform='DFT', quantization=None)
+                               dct_size=9, transform='DCT', quantization=None)
 
-        original = CompressionResult(data, config)
+        result = compress_band(original, config)
 
-        d = json.loads(json.dumps(original.as_dict()))
+        d = json.loads(json.dumps(result.as_dict()))
         reconstructed = CompressionResult.from_dict(d)
 
-        self.assertTrue(np.allclose(original.data, reconstructed.data))
-        self.assertEqual(original.config.block_size, reconstructed.config.block_size)
-        self.assertEqual(original.config.dct_size, reconstructed.config.dct_size)
-        self.assertEqual(original.config.transform, reconstructed.config.transform)
+        self.assertEqual(
+            result.data, [tuple(tuplist) for tuplist in reconstructed.data]
+        )
+        self.assertEqual(result.config.block_size, reconstructed.config.block_size)
+        self.assertEqual(result.config.dct_size, reconstructed.config.dct_size)
+        self.assertEqual(result.config.transform, reconstructed.config.transform)
 
     def test_serializability_for_complex_valued_arrays(self):
-        data = (np.arange(64) * 3j).reshape(4, 4, 4)
+        original = np.arange(64).reshape(8, 8)
 
         config = Configuration(width=323, height=766, block_size=3,
                                dct_size=9, transform='DFT', quantization=None)
-        original = CompressionResult(data, config)
+        result = compress_band(original, config)
 
-        d = json.loads(json.dumps(original.as_dict()))
+        d = json.loads(json.dumps(result.as_dict()))
         reconstructed = CompressionResult.from_dict(d)
 
-        self.assertTrue(np.allclose(original.data, reconstructed.data))
+        self.assertSequenceEqual(
+            result.data, [tuple(tuplist) for tuplist in reconstructed.data]
+        )
