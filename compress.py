@@ -1,36 +1,23 @@
-import json
 import argparse
 from PIL import Image
-from util import band_to_array
-from pipeline import compress_band, Configuration, QuantizationMethod
+from pipeline import Configuration, QuantizationMethod, Jpeg
 
 
 def compress(input_fname, output_fname, block_size=2, dct_size=8,
              transform='DCT', quantization=None):
-    im = Image.open(input_fname).convert('YCbCr')
 
-    y, cb, cr = im.split()
+    im = Image.open(input_fname).convert('YCbCr')
 
     config = Configuration(width=im.width, height=im.height,
                            block_size=block_size, dct_size=dct_size,
                            transform=transform, quantization=quantization
                            )
 
-    res_y = compress_band(band_to_array(y), config)
-    res_cb = compress_band(band_to_array(cb), config)
-    res_cr = compress_band(band_to_array(cr), config)
+    jpeg = Jpeg(config)
+    compressed_bytes = jpeg.compress(im)
 
-    d = {
-        'width': im.width,
-        'height': im.height,
-        'Y': res_y.as_dict(),
-        'Cb': res_cb.as_dict(),
-        'Cr': res_cr.as_dict()
-    }
-
-    s = json.dumps(d)
-    with open(output_fname, 'w') as f:
-        f.write(s)
+    with open(output_fname, 'wb') as f:
+        f.write(compressed_bytes)
 
 
 if __name__ == '__main__':

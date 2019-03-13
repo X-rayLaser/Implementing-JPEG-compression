@@ -1,9 +1,11 @@
+import json
 import numpy as np
 from util import split_into_blocks, pad_array, undo_pad_array,\
     padded_size, inflate, Zigzag
 from transforms import DCT
 from quantizers import RoundingQuantizer, DiscardingQuantizer,\
     DivisionQuantizer, JpegQuantizationTable
+import file_format
 
 
 step_classes = []
@@ -69,6 +71,19 @@ class QuantizationMethod:
             return self.name_to_quantizer[self.name](**self.params)
         except Exception:
             raise BadQuantizationError(error_msg)
+
+    def to_json(self):
+        d = dict(self.params)
+        d['quantization_scheme_name'] = self.name
+        return json.dumps(d)
+
+    @staticmethod
+    def from_json(s):
+        d = json.loads(s)
+        name = d['quantization_scheme_name']
+        params = dict(d)
+        del params['quantization_scheme_name']
+        return QuantizationMethod(name, **params)
 
 
 class Configuration:
@@ -254,7 +269,6 @@ class ZigzagOrder(AlgorithmStep):
     def execute(self, array):
         dct_size = self._config.dct_size
 
-        # todo: fix this mistake
         vert_blocks = array.shape[0] // dct_size
         hor_blocks = array.shape[1] // dct_size
 
@@ -369,6 +383,45 @@ def decompress_band(compression_result):
         a = step.invert(a)
 
     return a
+
+
+class CompressedData:
+    def __init__(self, y, cb, cr):
+        self.y = y
+        self.cb = cb
+        self.cr = cr
+
+
+class Jpeg:
+
+    def __init__(self, config):
+        self.config = config
+
+    def compress(self, image):
+        y, cb, cr = image.split()
+        from util import band_to_array
+        res_y = compress_band(band_to_array(y), self.config)
+        res_cb = compress_band(band_to_array(cb), self.config)
+        res_cr = compress_band(band_to_array(cr), self.config)
+
+        data = CompressedData(res_y, res_cb, res_cr)
+
+        return file_format.generate_data(self.config, data)
+
+    @staticmethod
+    def decompress(bytestream):
+        config, compressed_data = file_format.read_data(bytestream)
+        size = (config.height, config.width)
+        y = decompress_band(compressed_data.y)
+        cb = decompress_band(compressed_data.cb)
+        cr = decompress_band(compressed_data.cr)
+
+        ycbcr = np.dstack(
+            (y.reshape(size), cb.reshape(size), cr.reshape(size))
+        ).astype(np.uint8)
+
+        from PIL import Image
+        return Image.fromarray(np.asarray(ycbcr), mode='YCbCr')
 
 
 class ArraySerializer:

@@ -10,6 +10,7 @@ from quantization_tests import QuantizersTests
 from integration_tests import PipelineTests
 from zigzag_tests import ZigzagOrderTests
 from RLE_tests import RunLengthBlockTests, RunLengthEncodingTests
+from file_format_tests import FileFormatTests
 
 
 if __name__ == '__main__':

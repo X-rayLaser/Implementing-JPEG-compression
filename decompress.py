@@ -1,32 +1,12 @@
-import json
 import argparse
-import numpy as np
-from PIL import Image
-from pipeline import decompress_band, CompressionResult
+from pipeline import Jpeg
 
 
 def decompress(input_path, output_path):
-    with open(input_path, 'r') as f:
-        s = f.read()
+    with open(input_path, 'rb') as f:
+        bytestream = f.read()
 
-    d = json.loads(s)
-    size = (d['height'], d['width'])
-
-    y = decompress_band(
-        CompressionResult.from_dict(d['Y'])
-    )
-    cb = decompress_band(
-        CompressionResult.from_dict(d['Cb'])
-    )
-    cr = decompress_band(
-        CompressionResult.from_dict(d['Cr'])
-    )
-
-    ycbcr = np.dstack(
-        (y.reshape(size),cb.reshape(size), cr.reshape(size))
-    ).astype(np.uint8)
-
-    reconstructed = Image.fromarray(np.asarray(ycbcr), mode='YCbCr')
+    reconstructed = Jpeg.decompress(bytestream)
     reconstructed.save(output_path)
 
 
