@@ -3,7 +3,8 @@ import sys
 import numpy as np
 sys.path.insert(0, '../')
 from util import Zigzag, BadArrayShapeError
-from pipeline import ZigzagOrder, Configuration
+from pipeline import Configuration
+from pipeline.zigzag_order import ZigzagOrder
 
 
 class ZigzagOrderTests(unittest.TestCase):

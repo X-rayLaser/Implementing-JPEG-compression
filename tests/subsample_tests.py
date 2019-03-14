@@ -3,7 +3,8 @@ import sys
 import numpy as np
 sys.path.insert(0, '../')
 
-from pipeline import SubSampling, Configuration
+from pipeline import Configuration
+from pipeline.subsampling import SubSampling
 
 
 class SubsampleTests(unittest.TestCase):

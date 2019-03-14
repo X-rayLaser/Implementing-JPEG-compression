@@ -3,7 +3,9 @@ import sys
 import numpy as np
 sys.path.insert(0, '../')
 from util import RunLengthBlock, RunLengthCode
-from pipeline import RunLengthEncoding, Configuration, RleBytestream
+from pipeline import Configuration
+from pipeline.run_length_encoding import RunLengthEncoding
+from pipeline.rle_byte_stream import RleBytestream
 from util import BadRleCodeError
 
 
