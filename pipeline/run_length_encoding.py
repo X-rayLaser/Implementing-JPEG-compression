@@ -1,6 +1,41 @@
 import numpy as np
 from .base import AlgorithmStep
-from util import RunLengthBlock, RunLengthCode, padded_size
+from util import RunLengthCode, padded_size
+
+
+class RunLengthBlock:
+    def __init__(self, block_size):
+        self._size = block_size
+
+    def non_zeros(self, a):
+        for i in range(a.shape[0]):
+            if a[i] != 0:
+                yield a[i], i
+
+    def encode(self, zigzag_array):
+        res = []
+
+        prev_index = -1
+        for value, index in self.non_zeros(zigzag_array):
+            run_length = index - prev_index - 1
+            code = RunLengthCode.encode(run_length, value)
+            res.extend(code)
+            prev_index = index
+
+        res.append(RunLengthCode.EOB())
+        return res
+
+    def decode(self, rle_block):
+        res = []
+        for code in rle_block:
+            if code.is_EOB():
+                nzeros = self._size - len(res)
+                res.extend([0] * nzeros)
+                break
+
+            res.extend(code.decode())
+
+        return np.array(res)
 
 
 class RunLengthEncoding(AlgorithmStep):

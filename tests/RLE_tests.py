@@ -2,9 +2,9 @@ import unittest
 import sys
 import numpy as np
 sys.path.insert(0, '../')
-from util import RunLengthBlock, RunLengthCode
+from util import RunLengthCode
 from pipeline import Configuration
-from pipeline.run_length_encoding import RunLengthEncoding
+from pipeline.run_length_encoding import RunLengthEncoding, RunLengthBlock
 from pipeline.rle_byte_stream import RleBytestream
 from util import BadRleCodeError
 

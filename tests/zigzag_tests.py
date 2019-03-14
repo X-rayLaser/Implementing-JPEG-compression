@@ -2,9 +2,9 @@ import unittest
 import sys
 import numpy as np
 sys.path.insert(0, '../')
-from util import Zigzag, BadArrayShapeError
+from util import BadArrayShapeError
 from pipeline import Configuration
-from pipeline.zigzag_order import ZigzagOrder
+from pipeline.zigzag_order import Zigzag, ZigzagOrder
 
 
 class ZigzagOrderTests(unittest.TestCase):
