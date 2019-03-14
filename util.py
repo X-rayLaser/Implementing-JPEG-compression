@@ -215,6 +215,19 @@ class RunLengthCode:
         return res
 
     def __init__(self, run_length, size, amplitude=0):
+        code = '({}, {}, {})'.format(run_length, size, amplitude)
+        if size == 0 and amplitude != 0:
+            raise BadRleCodeError(str(code))
+
+        if run_length < 0 or run_length > 15:
+            raise BadRleCodeError(str(code))
+
+        if size < 0 or size > 15:
+            raise BadRleCodeError(str(code))
+
+        if run_length > 0 and run_length != 15 and size == 0 and amplitude == 0:
+            raise BadRleCodeError(str(code))
+
         self.run_length = run_length
         self.size = size
         self.amplitude = amplitude
@@ -284,3 +297,7 @@ class RunLengthBlock:
             res.extend(code.decode())
 
         return np.array(res)
+
+
+class BadRleCodeError(Exception):
+    pass

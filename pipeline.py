@@ -1,7 +1,8 @@
 import json
 import numpy as np
+from bitarray import bitarray
 from util import split_into_blocks, pad_array, undo_pad_array,\
-    padded_size, inflate, Zigzag
+    padded_size, inflate, Zigzag, RunLengthCode, RunLengthBlock
 from transforms import DCT
 from quantizers import RoundingQuantizer, DiscardingQuantizer,\
     DivisionQuantizer, JpegQuantizationTable
@@ -307,8 +308,6 @@ class RunLengthEncoding(AlgorithmStep):
     step_index = 7
 
     def execute(self, array):
-        from util import RunLengthBlock
-
         vert_blocks = array.shape[0]
         hor_blocks = array.shape[1]
         block_size = array.shape[2]
@@ -329,8 +328,6 @@ class RunLengthEncoding(AlgorithmStep):
         dct_size = self._config.dct_size
         vert_blocks = self._height_in_blocks()
         hor_blocks = self._width_in_blocks()
-
-        from util import RunLengthBlock
 
         block_size = self._config.dct_size ** 2
         rle_block = RunLengthBlock(block_size=block_size)
@@ -354,8 +351,6 @@ class RunLengthEncoding(AlgorithmStep):
         return padded_size(subsampling_width, self._config.dct_size) // self._config.dct_size
 
     def _rle_blocks(self, tuples_list):
-        from util import RunLengthCode
-
         block = []
         for t in tuples_list:
             code = RunLengthCode(*t)
@@ -365,10 +360,16 @@ class RunLengthEncoding(AlgorithmStep):
                 block = []
 
 
-class BitReader:
+class BitDecoder:
     def __init__(self, array):
         self._array = array
         self._pos = 0
+
+    def decode_unsigned(self, n):
+        return self._decode_unsigned(self.read(n))
+
+    def decode_signed(self, n):
+        return self._decode_signed(self.read(n))
 
     def read_quad(self):
         return self.read(4)
@@ -386,37 +387,64 @@ class BitReader:
     def is_end(self):
         return self._pos >= len(self._array)
 
+    def _decode_unsigned(self, bits):
+        return int(bits.to01(), base=2)
+
+    def _decode_signed(self, bits):
+        res = int(bits.to01()[1:], base=2)
+
+        negative = bits.to01()[0] == '0'
+        if negative:
+            res = -res
+        return res
+
+
+class BitEncoder:
+    def encode_unsigned(self, x):
+        bitstring = self._to_bitstring(x)
+        return bitarray(bitstring)
+
+    def encode_signed(self, x):
+        bitstring = self._to_bitstring(x)
+        bitstring = '1' + bitstring if x > 0 else '0' + bitstring
+        return bitarray(bitstring)
+
+    def pad_bitstring(self, bits, size=4):
+        while len(bits) < size:
+            bits = bitarray('0') + bits
+        return bits
+
+    def _to_bitstring(self, x):
+        return bin(abs(x))[2:]
+
 
 class RleBytestream(AlgorithmStep):
     step_index = 8
 
     def execute(self, tuples_list):
-        from util import RunLengthCode
-
-        from bitarray import bitarray
-
         res = bitarray()
+
+        encoder = BitEncoder()
 
         for t in tuples_list:
             code = RunLengthCode(*t)
+
             if code.is_EOB():
                 res.extend(bitarray('0' * 8))
-                while len(res) % 8 > 0:
-                    res.append(False)
+                self._pad_bitarray(res)
             else:
-                run_len_bits = self._to_bitstring(code.run_length)
-                res.extend(self._pad_bitstring(run_len_bits))
+                run_len_bits = encoder.encode_unsigned(code.run_length)
+                res.extend(encoder.pad_bitstring(run_len_bits))
 
-                size_bits = self._to_bitstring(code.size)
-                res.extend(self._pad_bitstring(size_bits))
+                size_bits = encoder.encode_unsigned(code.size)
+                res.extend(encoder.pad_bitstring(size_bits))
 
                 if not code.is_zeros_chain():
-                    res.extend(self._to_bitstring(code.amplitude, signed=True))
+                    res.extend(encoder.encode_signed(code.amplitude))
 
         return res.tobytes()
 
     def invert(self, bytestream):
-        from bitarray import bitarray
         a = bitarray()
         a.frombytes(bytestream)
         tup_list = []
@@ -426,55 +454,25 @@ class RleBytestream(AlgorithmStep):
 
         return tup_list
 
+    def _pad_bitarray(self, a):
+        while len(a) % 8 > 0:
+            a.append(False)
+
     def _codes(self, bits):
-        from util import RunLengthCode
-
-        reader = BitReader(bits)
-        while not reader.is_end():
-            run_len = self._decode(reader.read_quad())
-
-            size = self._decode(reader.read_quad())
+        decoder = BitDecoder(bits)
+        while not decoder.is_end():
+            run_len = decoder.decode_unsigned(4)
+            size = decoder.decode_unsigned(4)
 
             if run_len == 0 and size == 0:
-                reader.skip_padding()
-                yield RunLengthCode.EOB()
-                continue
-
-            if run_len == 15 and size == 0:
-                yield RunLengthCode(15, 0, 0)
-                continue
-
-            amplitude = self._decode(reader.read(size), signed=True)
-            yield RunLengthCode(run_len, size, amplitude)
-
-    def _decode(self, bits, signed=False):
-        if signed:
-            abs_val = int(bits.to01()[1:], base=2)
-
-            negative = bits.to01()[0] == '0'
-            if negative:
-                return -abs_val
+                decoder.skip_padding()
+                code = RunLengthCode.EOB()
+            elif run_len == 15 and size == 0:
+                code = RunLengthCode(15, 0, 0)
             else:
-                return abs_val
-
-        return int(bits.to01(), base=2)
-
-    def _to_bitstring(self, x, signed=False):
-        from bitarray import bitarray
-
-        s = bin(abs(x))[2:]
-
-        if signed:
-            s = '1' + s if x > 0 else '0' + s
-
-        return bitarray(s)
-
-    def _pad_bitstring(self, bits, size=4):
-        from bitarray import bitarray
-
-        while len(bits) < size:
-            bits = bitarray('0') + bits
-        return bits
+                amplitude = decoder.decode_signed(size)
+                code = RunLengthCode(run_len, size, amplitude)
+            yield code
 
 
 def compress_band(a, config):

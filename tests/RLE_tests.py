@@ -4,6 +4,7 @@ import numpy as np
 sys.path.insert(0, '../')
 from util import RunLengthBlock, RunLengthCode
 from pipeline import RunLengthEncoding, Configuration, RleBytestream
+from util import BadRleCodeError
 
 
 class RunLengthBlockTests(unittest.TestCase):
@@ -133,6 +134,48 @@ class RleBytestreamTests(unittest.TestCase):
         res = rle_stream.invert(rle_stream.execute(x))
 
         self.assertEqual(res, x)
+
+    def test_with_erroneous_codes(self):
+        def zero_length_codes1():
+            rle_stream = RleBytestream(config=None)
+            rle_stream.execute([(15, 0, 1), (0, 0)])
+
+        def zero_length_codes2():
+            rle_stream = RleBytestream(config=None)
+            rle_stream.execute([(15, 0, -10), (0, 0)])
+
+        def out_of_range1():
+            rle_stream = RleBytestream(config=None)
+            rle_stream.execute([(16, 3, 3), (0, 0)])
+
+        def out_of_range2():
+            rle_stream = RleBytestream(config=None)
+            rle_stream.execute([(-1, 3, 3), (0, 0)])
+
+        def out_of_range3():
+            rle_stream = RleBytestream(config=None)
+            rle_stream.execute([(10, 16, 0), (0, 0)])
+
+        def out_of_range4():
+            rle_stream = RleBytestream(config=None)
+            rle_stream.execute([(4, -1, 0), (0, 0)])
+
+        def out_of_range5():
+            rle_stream = RleBytestream(config=None)
+            rle_stream.execute([(40, -18, 0), (0, 0)])
+
+        def zero_after_chain_of_zeros():
+            rle_stream = RleBytestream(config=None)
+            rle_stream.execute([(12, 0, 0), (0, 0)])
+
+        self.assertRaises(BadRleCodeError, zero_length_codes1)
+        self.assertRaises(BadRleCodeError, zero_length_codes2)
+        self.assertRaises(BadRleCodeError, out_of_range1)
+        self.assertRaises(BadRleCodeError, out_of_range2)
+        self.assertRaises(BadRleCodeError, out_of_range3)
+        self.assertRaises(BadRleCodeError, out_of_range4)
+        self.assertRaises(BadRleCodeError, out_of_range5)
+        self.assertRaises(BadRleCodeError, zero_after_chain_of_zeros)
 
     def test_compress_and_restore_simple_sequence(self):
         x = [(14, 4, 7), (0, 0)]
