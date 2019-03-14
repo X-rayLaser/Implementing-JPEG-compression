@@ -50,6 +50,7 @@ class PipelineTests(unittest.TestCase):
         restored = decompress_band(compress_band(
             original, Configuration(width=3, height=2, block_size=1)
         ))
+
         self.assertTrue(np.allclose(original, restored, rtol=0.000001))
 
     def test_with_1pixel_blocks(self):
@@ -59,35 +60,3 @@ class PipelineTests(unittest.TestCase):
             original, Configuration(width=8, height=8, block_size=1, dct_size=1)
         ))
         self.assertTrue(np.allclose(original, restored, rtol=0.000001))
-
-    def test_serializability_for_integer_valued_arrays(self):
-        original = np.arange(64).reshape(8, 8)
-
-        config = Configuration(width=323, height=766, block_size=3,
-                               dct_size=9, transform='DCT', quantization=None)
-
-        result = compress_band(original, config)
-
-        d = json.loads(json.dumps(result.as_dict()))
-        reconstructed = CompressionResult.from_dict(d)
-
-        self.assertEqual(
-            result.data, [tuple(tuplist) for tuplist in reconstructed.data]
-        )
-        self.assertEqual(result.config.block_size, reconstructed.config.block_size)
-        self.assertEqual(result.config.dct_size, reconstructed.config.dct_size)
-        self.assertEqual(result.config.transform, reconstructed.config.transform)
-
-    def test_serializability_for_complex_valued_arrays(self):
-        original = np.arange(64).reshape(8, 8)
-
-        config = Configuration(width=323, height=766, block_size=3,
-                               dct_size=9, transform='DFT', quantization=None)
-        result = compress_band(original, config)
-
-        d = json.loads(json.dumps(result.as_dict()))
-        reconstructed = CompressionResult.from_dict(d)
-
-        self.assertSequenceEqual(
-            result.data, [tuple(tuplist) for tuplist in reconstructed.data]
-        )

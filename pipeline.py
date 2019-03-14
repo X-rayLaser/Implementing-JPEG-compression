@@ -365,6 +365,118 @@ class RunLengthEncoding(AlgorithmStep):
                 block = []
 
 
+class BitReader:
+    def __init__(self, array):
+        self._array = array
+        self._pos = 0
+
+    def read_quad(self):
+        return self.read(4)
+
+    def read(self, n):
+        index = self._pos
+        res = self._array[index:index + n]
+        self._pos += n
+        return res
+
+    def skip_padding(self):
+        while self._pos % 8 > 0:
+            self.read(1)
+
+    def is_end(self):
+        return self._pos >= len(self._array)
+
+
+class RleBytestream(AlgorithmStep):
+    step_index = 8
+
+    def execute(self, tuples_list):
+        from util import RunLengthCode
+
+        from bitarray import bitarray
+
+        res = bitarray()
+
+        for t in tuples_list:
+            code = RunLengthCode(*t)
+            if code.is_EOB():
+                res.extend(bitarray('0' * 8))
+                while len(res) % 8 > 0:
+                    res.append(False)
+            else:
+                run_len_bits = self._to_bitstring(code.run_length)
+                res.extend(self._pad_bitstring(run_len_bits))
+
+                size_bits = self._to_bitstring(code.size)
+                res.extend(self._pad_bitstring(size_bits))
+
+                if not code.is_zeros_chain():
+                    res.extend(self._to_bitstring(code.amplitude, signed=True))
+
+        return res.tobytes()
+
+    def invert(self, bytestream):
+        from bitarray import bitarray
+        a = bitarray()
+        a.frombytes(bytestream)
+        tup_list = []
+
+        for code in self._codes(a):
+            tup_list.append(code.as_tuple())
+
+        return tup_list
+
+    def _codes(self, bits):
+        from util import RunLengthCode
+
+        reader = BitReader(bits)
+        while not reader.is_end():
+            run_len = self._decode(reader.read_quad())
+
+            size = self._decode(reader.read_quad())
+
+            if run_len == 0 and size == 0:
+                reader.skip_padding()
+                yield RunLengthCode.EOB()
+                continue
+
+            if run_len == 15 and size == 0:
+                yield RunLengthCode(15, 0, 0)
+                continue
+
+            amplitude = self._decode(reader.read(size), signed=True)
+            yield RunLengthCode(run_len, size, amplitude)
+
+    def _decode(self, bits, signed=False):
+        if signed:
+            abs_val = int(bits.to01()[1:], base=2)
+
+            negative = bits.to01()[0] == '0'
+            if negative:
+                return -abs_val
+            else:
+                return abs_val
+
+        return int(bits.to01(), base=2)
+
+    def _to_bitstring(self, x, signed=False):
+        from bitarray import bitarray
+
+        s = bin(abs(x))[2:]
+
+        if signed:
+            s = '1' + s if x > 0 else '0' + s
+
+        return bitarray(s)
+
+    def _pad_bitstring(self, bits, size=4):
+        from bitarray import bitarray
+
+        while len(bits) < size:
+            bits = bitarray('0') + bits
+        return bits
+
+
 def compress_band(a, config):
     for cls in step_classes:
         step = cls(config)

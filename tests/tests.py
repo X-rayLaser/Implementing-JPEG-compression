@@ -9,7 +9,8 @@ from basis_change_tests import DctTests
 from quantization_tests import QuantizersTests
 from integration_tests import PipelineTests
 from zigzag_tests import ZigzagOrderTests
-from RLE_tests import RunLengthBlockTests, RunLengthEncodingTests
+from RLE_tests import RunLengthBlockTests, RunLengthEncodingTests,\
+    RleBytestreamTests
 from file_format_tests import FileFormatTests
 
 
