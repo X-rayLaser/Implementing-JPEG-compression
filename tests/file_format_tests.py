@@ -1,12 +1,8 @@
 import unittest
 import sys
-import json
-import numpy as np
 sys.path.insert(0, '../')
 
-from pipeline import compress_band, decompress_band, \
-    Configuration, CompressionResult, QuantizationMethod, CompressedData
-
+from pipeline import Configuration, QuantizationMethod, CompressedData
 import file_format
 
 

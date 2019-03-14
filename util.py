@@ -1,5 +1,6 @@
 import math
 import numpy as np
+from bitarray import bitarray
 
 
 def inflate(a, factor):
@@ -187,6 +188,25 @@ class Zigzag:
             yield self._bottom_right_diagonal(col)
 
 
+class BitEncoder:
+    def encode_unsigned(self, x):
+        bitstring = self._to_bitstring(x)
+        return bitarray(bitstring)
+
+    def encode_signed(self, x):
+        bitstring = self._to_bitstring(x)
+        bitstring = '1' + bitstring if x > 0 else '0' + bitstring
+        return bitarray(bitstring)
+
+    def pad_bitstring(self, bits, size=4):
+        while len(bits) < size:
+            bits = bitarray('0') + bits
+        return bits
+
+    def _to_bitstring(self, x):
+        return bin(abs(x))[2:]
+
+
 class RunLengthCode:
     max_run_length = 15
 
@@ -254,6 +274,26 @@ class RunLengthCode:
         else:
             amplitude = int(round(self.amplitude))
         return self.run_length, self.size, amplitude
+
+    def as_bitsring(self):
+        encoder = BitEncoder()
+
+        code = self
+
+        if code.is_EOB():
+            return bitarray('0' * 8)
+        else:
+            res = bitarray()
+
+            run_len_bits = encoder.encode_unsigned(code.run_length)
+            res.extend(encoder.pad_bitstring(run_len_bits))
+
+            size_bits = encoder.encode_unsigned(code.size)
+            res.extend(encoder.pad_bitstring(size_bits))
+
+            if not code.is_zeros_chain():
+                res.extend(encoder.encode_signed(code.amplitude))
+            return res
 
     def __eq__(self, other):
         return (self.run_length == other.run_length and

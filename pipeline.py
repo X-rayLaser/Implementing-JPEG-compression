@@ -1,13 +1,13 @@
 import json
 import numpy as np
 from bitarray import bitarray
+from PIL import Image
 from util import split_into_blocks, pad_array, undo_pad_array,\
-    padded_size, inflate, Zigzag, RunLengthCode, RunLengthBlock
+    padded_size, inflate, Zigzag, RunLengthCode, RunLengthBlock, band_to_array
 from transforms import DCT
 from quantizers import RoundingQuantizer, DiscardingQuantizer,\
     DivisionQuantizer, JpegQuantizationTable
 import file_format
-
 
 step_classes = []
 
@@ -399,48 +399,18 @@ class BitDecoder:
         return res
 
 
-class BitEncoder:
-    def encode_unsigned(self, x):
-        bitstring = self._to_bitstring(x)
-        return bitarray(bitstring)
-
-    def encode_signed(self, x):
-        bitstring = self._to_bitstring(x)
-        bitstring = '1' + bitstring if x > 0 else '0' + bitstring
-        return bitarray(bitstring)
-
-    def pad_bitstring(self, bits, size=4):
-        while len(bits) < size:
-            bits = bitarray('0') + bits
-        return bits
-
-    def _to_bitstring(self, x):
-        return bin(abs(x))[2:]
-
-
 class RleBytestream(AlgorithmStep):
     step_index = 8
 
     def execute(self, tuples_list):
         res = bitarray()
 
-        encoder = BitEncoder()
-
         for t in tuples_list:
             code = RunLengthCode(*t)
+            res.extend(code.as_bitsring())
 
             if code.is_EOB():
-                res.extend(bitarray('0' * 8))
                 self._pad_bitarray(res)
-            else:
-                run_len_bits = encoder.encode_unsigned(code.run_length)
-                res.extend(encoder.pad_bitstring(run_len_bits))
-
-                size_bits = encoder.encode_unsigned(code.size)
-                res.extend(encoder.pad_bitstring(size_bits))
-
-                if not code.is_zeros_chain():
-                    res.extend(encoder.encode_signed(code.amplitude))
 
         return res.tobytes()
 
@@ -480,16 +450,16 @@ def compress_band(a, config):
         step = cls(config)
         a = step.execute(a)
 
-    return CompressionResult(a, config)
+    return a
 
 
-def decompress_band(compression_result):
-    a = compression_result.data
+def decompress_band(compression_result, config):
+    a = compression_result
 
     reversed_steps = list(step_classes)
     reversed_steps.reverse()
     for cls in reversed_steps:
-        step = cls(compression_result.config)
+        step = cls(config)
         a = step.invert(a)
 
     return a
@@ -503,13 +473,11 @@ class CompressedData:
 
 
 class Jpeg:
-
     def __init__(self, config):
         self.config = config
 
     def compress(self, image):
         y, cb, cr = image.split()
-        from util import band_to_array
         res_y = compress_band(band_to_array(y), self.config)
         res_cb = compress_band(band_to_array(cb), self.config)
         res_cr = compress_band(band_to_array(cr), self.config)
@@ -522,103 +490,12 @@ class Jpeg:
     def decompress(bytestream):
         config, compressed_data = file_format.read_data(bytestream)
         size = (config.height, config.width)
-        y = decompress_band(compressed_data.y)
-        cb = decompress_band(compressed_data.cb)
-        cr = decompress_band(compressed_data.cr)
+        y = decompress_band(compressed_data.y, config)
+        cb = decompress_band(compressed_data.cb, config)
+        cr = decompress_band(compressed_data.cr, config)
 
         ycbcr = np.dstack(
             (y.reshape(size), cb.reshape(size), cr.reshape(size))
         ).astype(np.uint8)
 
-        from PIL import Image
         return Image.fromarray(np.asarray(ycbcr), mode='YCbCr')
-
-
-class ArraySerializer:
-    @staticmethod
-    def serialize(a):
-        return {
-            'values': a
-        }
-
-    @staticmethod
-    def deserialize(d):
-        return d['values']
-
-
-class ComplexListSerializer:
-    @staticmethod
-    def serialize(complex_tuples):
-        values = []
-        for t in complex_tuples:
-            if len(t) == 3:
-                run_length, size, value = t
-                d = {
-                    'real': np.real(value),
-                    'imag': np.imag(value)
-                }
-                values.append((run_length, size, d))
-            else:
-                values.append(t)
-        return values
-
-    @staticmethod
-    def deserialize(tuples_list):
-        values = []
-
-        for t in tuples_list:
-            if len(t) == 3:
-                run_length, size, d = t
-                complex_value = np.complex(d['real'], d['imag'])
-                values.append((run_length, size, complex_value))
-            else:
-                values.append(t)
-        return values
-
-
-class CompressionResult:
-    def __init__(self, data, config):
-        self.data = data
-        self.config = config
-
-    @staticmethod
-    def get_serializer(transform):
-        if transform == 'DCT':
-            return ArraySerializer
-        else:
-            return ComplexListSerializer
-
-    def as_dict(self):
-        serializer = self.get_serializer(self.config.transform)
-        data = serializer.serialize(self.data)
-
-        return {
-            'data': data,
-            'block_size': self.config.block_size,
-            'dct_block_size': self.config.dct_size,
-            'transform': self.config.transform,
-            'width': self.config.width,
-            'height': self.config.height,
-            'quantization_name': self.config.quantization.name,
-            'quantization_params': self.config.quantization.params
-        }
-
-    @staticmethod
-    def from_dict(d):
-        block_size = d['block_size']
-        dct_block_size = d['dct_block_size']
-        transform_type = d['transform']
-        width = d['width']
-        height = d['height']
-
-        serializer = CompressionResult.get_serializer(transform_type)
-        data = serializer.deserialize(d['data'])
-
-        quantization = QuantizationMethod(d['quantization_name'],
-                                          **d['quantization_params'])
-
-        config = Configuration(width=width, height=height,
-                               block_size=block_size, dct_size=dct_block_size,
-                               transform=transform_type,
-                               quantization=quantization)
-        return CompressionResult(data, config)
