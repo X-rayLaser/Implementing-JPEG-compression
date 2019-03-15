@@ -154,6 +154,7 @@ class RunLengthCode:
         run_length = run_length % RunLengthCode.max_run_length
 
         bit_size = math.ceil(math.log2(abs(amplitude) + 1)) + 1
+
         res.append(RunLengthCode(run_length, bit_size, amplitude))
 
         return res

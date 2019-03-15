@@ -13,10 +13,13 @@ class RunLengthBlock:
                 yield a[i], i
 
     def encode(self, zigzag_array):
+        a = np.zeros(zigzag_array.shape, dtype=np.int)
+        a[:] = np.round(zigzag_array)
+
         res = []
 
         prev_index = -1
-        for value, index in self.non_zeros(zigzag_array):
+        for value, index in self.non_zeros(a):
             run_length = index - prev_index - 1
             code = RunLengthCode.encode(run_length, value)
             res.extend(code)

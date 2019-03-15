@@ -41,10 +41,10 @@ class PipelineTests(unittest.TestCase):
     def test_fourier_transform_option(self):
         original = np.arange(128).reshape(8, 16)
 
+        config = Configuration(width=16, height=8, block_size=3, transform='DFT')
         restored = decompress_band(compress_band(
-            original, Configuration(width=16, height=8,
-                                    block_size=3, transform='DFT')
-        ))
+            original, config
+        ), config)
         self.assertTrue(np.allclose(original, restored, rtol=1))
 
     def test_without_subsampling(self):
