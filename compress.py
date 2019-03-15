@@ -3,7 +3,7 @@ from PIL import Image
 from pipeline import Configuration, QuantizationMethod, Jpeg
 
 
-def compress(input_fname, output_fname, block_size=2, dct_size=8,
+def compress(input_fname, output_fname, block_size=4, dct_size=8,
              transform='DCT', quantization=None):
 
     im = Image.open(input_fname).convert('YCbCr')
@@ -30,7 +30,7 @@ if __name__ == '__main__':
     parser.add_argument('outfile', type=str,
                         help='a destination path')
 
-    parser.add_argument('--block_size', action='store', type=int, default=2,
+    parser.add_argument('--block_size', action='store', type=int, default=4,
                         help='size of sub-sampling block')
 
     parser.add_argument('--dct_size', action='store', type=int, default=8,
@@ -39,7 +39,7 @@ if __name__ == '__main__':
     parser.add_argument('--transform', action='store', type=str, default='DCT',
                         help='type of discrete transform (DCT vs DFT)')
 
-    parser.add_argument('--quantization', action='store', type=str, default='none',
+    parser.add_argument('--quantization', action='store', type=str, default='qtable',
                         help='type of quantization to use: on of none, discard, divide, qtable ')
 
     parser.add_argument('--qkeep', action='store', type=int, default=2,

@@ -31,7 +31,7 @@ Go inside the repository git directory and install project's dependencies.
 ```
     pip install -r requirements.txt
 ```
-Compress the file:
+Compress the file with default options:
 ```
     python compress.py in.png out
 ```
@@ -39,6 +39,18 @@ Compress the file:
 Decompress the file:
 ```
     python decompress.py out reconstructed.jpg
+```
+
+Compress the file with subsampling factor = 5, size of DCT block = 8,
+and use Discrete Cosine Transform:
+```
+    python compress.py in.png out --block_size 5 --dct_size 8 --transform DCT
+```
+
+Compress the file with subsampling factor = 5, size of DCT block = 24,
+divide each DCT quotient by 1000 (Huge compression rate):
+```
+    python compress.py in.png out --block_size 5 --dct_size 24 --quantization divide --qdivisor 1000
 ```
 
 # License

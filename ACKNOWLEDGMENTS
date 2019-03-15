@@ -15,6 +15,7 @@ Pillow
 
 numpy
     Copyright (c) 2005-2019, NumPy Developers.
+    All rights reserved.
 
     BSD License
 
@@ -22,7 +23,8 @@ numpy
 
 
 bitarray
-    Ilan Schnell
+    written and maintained by
+    Ilan Schnell <ilanschnell@gmail.com>
 
     Python Software Foundation License (PSF)
 

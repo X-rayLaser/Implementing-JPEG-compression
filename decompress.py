@@ -7,7 +7,7 @@ def decompress(input_path, output_path):
         bytestream = f.read()
 
     reconstructed = Jpeg.decompress(bytestream)
-    reconstructed.save(output_path)
+    reconstructed.convert('RGB').save(output_path)
 
 
 if __name__ == '__main__':
