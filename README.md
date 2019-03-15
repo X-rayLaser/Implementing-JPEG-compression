@@ -2,7 +2,7 @@
 
 The main purpose of this repository was to better understand JPEG
 compression algorithm. The implementation of the
-compression and decompression presented here is far from
+compression and decompression presented here is inefficient and far from
 official JPEG standard. Therefore, it is not designed to be used for production
 environment.
 
@@ -38,7 +38,7 @@ Compress the file with default options:
 
 Decompress the file:
 ```
-    python decompress.py out reconstructed.jpg
+    python decompress.py out reconstructed.png
 ```
 
 Compress the file with subsampling factor = 5, size of DCT block = 8,
